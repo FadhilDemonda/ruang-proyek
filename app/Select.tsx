@@ -1,0 +1,14 @@
+'use client';
+import { Children, isValidElement, useEffect, useId, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
+
+type Option = {value:string; label:ReactNode; disabled?:boolean};
+export default function Select({children,value,onChange,'aria-label':ariaLabel}:{children:ReactNode;value:string;onChange:(event:ChangeEvent<HTMLSelectElement>)=>void;'aria-label'?:string}) {
+ const options:Option[]=[];
+ Children.forEach(children,child=>{if(isValidElement<{value?:string|number;children?:ReactNode;disabled?:boolean}>(child)){options.push({value:String(child.props.value??child.props.children??''),label:child.props.children,disabled:child.props.disabled})}});
+ const [open,setOpen]=useState(false); const [active,setActive]=useState(0); const root=useRef<HTMLDivElement>(null); const id=useId();
+ const selected=Math.max(0,options.findIndex(o=>o.value===value));
+ useEffect(()=>{if(!open)return;const close=(event:MouseEvent)=>{if(!root.current?.contains(event.target as Node))setOpen(false)};document.addEventListener('mousedown',close);return()=>document.removeEventListener('mousedown',close)},[open]);
+ function choose(index:number){const option=options[index];if(!option||option.disabled)return;onChange({target:{value:option.value}} as ChangeEvent<HTMLSelectElement>);setOpen(false);root.current?.querySelector('button')?.focus()}
+ function key(event:KeyboardEvent<HTMLButtonElement>){if(event.key==='Escape'){setOpen(false);return}if(event.key==='Tab'){setOpen(false);return}if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();if(!open){setActive(selected);setOpen(true)}else setActive(i=>Math.max(0,Math.min(options.length-1,i+(event.key==='ArrowDown'?1:-1))));return}if((event.key==='Enter'||event.key===' ')&&open){event.preventDefault();choose(active)}}
+ return <div className="select-wrap" ref={root}><button type="button" className="select-trigger" role="combobox" aria-label={ariaLabel} aria-expanded={open} aria-controls={id} aria-activedescendant={open?`${id}-${active}`:undefined} aria-haspopup="listbox" onKeyDown={key} onClick={()=>{setActive(selected);setOpen(!open)}}><span>{options[selected]?.label}</span><span aria-hidden="true" className={'select-chevron '+(open?'up':'')}><svg width={"18"} height={"18"} viewBox={"0 0 24 24"} fill={"none"} stroke={"currentColor"} strokeWidth={"2"} strokeLinecap={"round"} strokeLinejoin={"round"}><path d={"m6 9 6 6 6-6"}/></svg></span></button>{open&&<div className="select-menu" id={id} role="listbox">{options.map((option,index)=><button type="button" role="option" id={`${id}-${index}`} aria-selected={index===selected} key={`${option.value}-${index}`} disabled={option.disabled} className={'select-option '+(index===active?'highlight ':'')+(index===selected?'chosen':'')} onMouseEnter={()=>setActive(index)} onClick={()=>choose(index)}><span>{option.label}</span>{index===selected&&<span aria-hidden="true">✓</span>}</button>)}</div>}</div>
+}

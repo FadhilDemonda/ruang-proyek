@@ -1,0 +1,25 @@
+# Dependencies and Next.js output
+/node_modules/
+/.next/
+/.next-dev/
+/out/
+/next-env.d.ts
+*.tsbuildinfo
+
+# Local configuration and Firebase CLI output
+.env
+.env.*
+!.env.example
+/.firebase/
+*-firebase-adminsdk-*.json
+serviceAccountKey.json
+*.log
+
+# Test output
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/coverage/
+
+.DS_Store
+Thumbs.db
