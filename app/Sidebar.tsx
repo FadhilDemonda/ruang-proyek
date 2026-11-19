@@ -108,13 +108,13 @@ export default function Sidebar(props: Props) {
     return (
       <>
         <div className="sidebar-header">
-          <div className="brand">
+          <Link href="/profil" className="brand" aria-label="Profil Ruang Proyek" style={{ color: "inherit", textDecoration: "none" }}>
             <Logo />
             <div className="sidebar-label brand-text">
               <span className="brand-copy">Ruang Proyek</span>
               <span className="brand-sub">Workspace</span>
             </div>
-          </div>
+          </Link>
           <button
             type="button"
             className="sidebar-toggle"
@@ -285,3 +285,4 @@ export default function Sidebar(props: Props) {
     </>
   );
 }
+
