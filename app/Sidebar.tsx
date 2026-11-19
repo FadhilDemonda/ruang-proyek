@@ -108,7 +108,7 @@ export default function Sidebar(props: Props) {
     return (
       <>
         <div className="sidebar-header">
-          <Link href="/profil" className="brand" aria-label="Profil Ruang Proyek" style={{ color: "inherit", textDecoration: "none" }}>
+          <Link href="/" className="brand" aria-label="Beranda Ruang Proyek" style={{ color: "inherit", textDecoration: "none" }}>
             <Logo />
             <div className="sidebar-label brand-text">
               <span className="brand-copy">Ruang Proyek</span>

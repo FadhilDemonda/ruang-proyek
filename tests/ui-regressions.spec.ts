@@ -14,7 +14,7 @@ async function openWorkspace(page: Page, theme: "light" | "dark" = "light") {
       ],
     }));
   }, theme);
-  await page.goto("/");
+  await page.goto("/workspace");
   await expect(page.getByRole("heading", { name: "Proyek saya" })).toBeVisible();
 }
 
@@ -243,7 +243,7 @@ test("restores every detail with browser Back and Forward", async ({ page }) => 
       notes: [{ id: "n1", title: "Catatan detail", content: "Isi tersimpan", updatedAt: Date.now() }],
     }));
   });
-  await page.goto("/");
+  await page.goto("/workspace");
   const nav = page.getByRole("navigation", { name: "Menu utama" });
   const sections = [
     { menu: "Proyek", section: "projects", id: "p1", trigger: "Proyek detail", title: "Proyek detail", list: "Proyek saya" },
@@ -268,7 +268,7 @@ test("restores every detail with browser Back and Forward", async ({ page }) => 
     if (section.section === "notes") await expect(page.getByLabel("Isi catatan")).toHaveValue("Draf dari detail");
   }
 
-  await page.goto("/?section=requests&detail=r1");
+  await page.goto("/workspace?section=requests&detail=r1");
   await expect(page.getByRole("heading", { name: "Request detail", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Kembali ke request", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Daftar request", exact: true })).toBeVisible();
@@ -305,7 +305,7 @@ test("project cards are clickable anywhere with shadow separation and structured
       notes: [],
     }));
   });
-  await page.goto("/");
+  await page.goto("/workspace");
 
   const region = page.getByRole("region", { name: "Proyek" });
   const cards = region.locator(".project-card");

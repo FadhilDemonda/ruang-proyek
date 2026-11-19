@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("saves a cropped profile photo and restores it on mobile", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/workspace");
   const picker = page.locator("aside").getByLabel("Ganti foto profil");
   await picker.setInputFiles({ name: "note.txt", mimeType: "text/plain", buffer: Buffer.from("test") });
   await expect(page.locator("aside").getByRole("alert")).toContainText("Pilih JPG");

@@ -9,7 +9,7 @@ async function openLegacyWorkspace(page: Page) {
       requests: [],
     }));
   });
-  await page.goto("/");
+  await page.goto("/workspace");
   await expect(page.getByRole("heading", { name: "Proyek saya" })).toBeVisible();
 }
 
@@ -81,7 +81,7 @@ test.describe("Notes", () => {
         ],
       }));
     });
-    await page.goto("/");
+    await page.goto("/workspace");
     await page.getByRole("navigation", { name: "Menu utama" })
       .getByRole("button", { name: "Notes", exact: true }).click();
     const grid = page.getByRole("list", { name: "Daftar catatan" });
@@ -108,7 +108,7 @@ test.describe("Notes", () => {
         ],
       }));
     }, now);
-    await page.goto("/");
+    await page.goto("/workspace");
     await page.getByRole("navigation", { name: "Menu utama" })
       .getByRole("button", { name: "Notes", exact: true }).click();
 

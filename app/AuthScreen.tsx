@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { FirebaseError } from "firebase/app";
 import {
   createUserWithEmailAndPassword,
+  onAuthStateChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   updateProfile,
@@ -78,7 +79,7 @@ export default function AuthScreen({ mode }: { mode: "login" | "register" }) {
   const registering = mode === "register";
   const router = useRouter();
   const [dark, setDark] = useState(false);
-  const [returnTo, setReturnTo] = useState("/");
+  const [returnTo, setReturnTo] = useState("/workspace");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -88,14 +89,29 @@ export default function AuthScreen({ mode }: { mode: "login" | "register" }) {
   const [profileCreated, setProfileCreated] = useState(false);
   const form = useRef<HTMLFormElement>(null);
   const errorBox = useRef<HTMLDivElement>(null);
+  const submitting = useRef(false);
 
   useEffect(() => {
     setDark(localStorage.getItem("ruang-theme") === "dark");
     const target = new URLSearchParams(location.search).get("next");
-    if (target?.startsWith("/?")) {
+    if (target?.startsWith("/workspace?")) {
+      setReturnTo(
+        workspaceHref(
+          readWorkspaceRoute(new URLSearchParams(target.slice("/workspace?".length))),
+        ),
+      );
+    } else if (target?.startsWith("/?")) {
       setReturnTo(workspaceHref(readWorkspaceRoute(new URLSearchParams(target.slice(2)))));
     }
   }, []);
+  useEffect(() => {
+    if (!auth) return;
+    return onAuthStateChanged(auth, (u) => {
+      if (u && !submitting.current && !profileCreated) {
+        router.replace(returnTo);
+      }
+    });
+  }, [router, returnTo, profileCreated]);
   useEffect(() => {
     if (error) errorBox.current?.focus();
   }, [error]);
@@ -137,6 +153,7 @@ export default function AuthScreen({ mode }: { mode: "login" | "register" }) {
       unavailable();
       return;
     }
+    submitting.current = true;
     setBusy(true);
     try {
       if (registering) {
@@ -159,6 +176,7 @@ export default function AuthScreen({ mode }: { mode: "login" | "register" }) {
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }
@@ -196,7 +214,7 @@ export default function AuthScreen({ mode }: { mode: "login" | "register" }) {
         <Link
           href="/"
           className={styles.brand}
-          aria-label="Ruang Proyek, buka ruang kerja"
+          aria-label="Ruang Proyek, kembali ke beranda"
         >
           <Logo />
           <span>
@@ -244,7 +262,7 @@ export default function AuthScreen({ mode }: { mode: "login" | "register" }) {
                 {profileCreated && (
                   <p>
                     Akun sudah dibuat, tetapi profil belum selesai disimpan.{" "}
-                    <Link href="/">Buka ruang kerja</Link> atau{" "}
+                    <Link href="/workspace">Buka ruang kerja</Link> atau{" "}
                     <Link href="/login">masuk kembali</Link>, jangan membuat
                     akun yang sama lagi.
                   </p>
@@ -405,14 +423,14 @@ export default function AuthScreen({ mode }: { mode: "login" | "register" }) {
               : "Belum memiliki akun ruang kerja?"}{" "}
             <Link href={{
               pathname: registering ? "/login" : "/register",
-              query: returnTo === "/" ? undefined : { next: returnTo },
+              query: returnTo === "/workspace" ? undefined : { next: returnTo },
             }}>
               {registering ? "Masuk" : "Buat akun"}
             </Link>
           </p>
           <div className={styles.bottomRow}>
-            <Link href="/">
-              {auth ? "Kembali ke ruang kerja" : "Buka ruang kerja lokal"}
+            <Link href={auth ? "/" : "/workspace"}>
+              {auth ? "Kembali ke beranda" : "Buka ruang kerja lokal"}
             </Link>
             <button
               type="button"

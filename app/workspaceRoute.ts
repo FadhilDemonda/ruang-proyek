@@ -26,5 +26,5 @@ export function workspaceHref({ section, detailId, projectId }: WorkspaceRoute) 
   if (section !== "projects" || detailId != null) params.set("section", section);
   if (detailId != null) params.set("detail", detailId);
   if (section === "todos" && projectId) params.set("project", projectId);
-  return params.size ? `/?${params}` : "/";
+  return params.size ? `/workspace?${params}` : "/workspace";
 }
