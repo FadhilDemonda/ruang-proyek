@@ -1,11 +1,12 @@
 "use client";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Select from "./Select";
 import HeaderDate from "./HeaderDate";
 import WorkspaceIcon from "./WorkspaceIcon";
 import Sidebar from "./Sidebar";
 import Modal from "./Modal";
+import { transitionTheme } from "./themeTransition";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import {
   collection,
@@ -78,6 +79,7 @@ function Workspace() {
     [view, setView] = useState<"list" | "board">("board"),
     [mobileColumn, setMobileColumn] = useState("Belum Mulai"),
     [dark, setDark] = useState(false);
+  const themeReady = useRef(false);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notesDirty, setNotesDirty] = useState(false);
@@ -105,7 +107,10 @@ function Workspace() {
   }, [toast]);
   useEffect(() => {
     setCollapsed(localStorage.getItem("ruang-sidebar") === "collapsed");
-    setDark(localStorage.getItem("ruang-theme") === "dark");
+    const isDark = localStorage.getItem("ruang-theme") === "dark";
+    setDark(isDark);
+    document.documentElement.dataset.theme = isDark ? "dark" : "light";
+    themeReady.current = true;
     setView(
       (localStorage.getItem("ruang-view") as "list" | "board") ||
         (matchMedia("(max-width: 700px)").matches ? "list" : "board"),
@@ -167,6 +172,7 @@ function Workspace() {
     return () => unsubs.forEach((u) => u());
   }, [user]);
   useEffect(() => {
+    if (!themeReady.current) return;
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     localStorage.setItem("ruang-theme", dark ? "dark" : "light");
   }, [dark]);
@@ -609,10 +615,18 @@ function Workspace() {
           <div className="header-actions">
             <HeaderDate />
             <button
-              onClick={() => setDark(!dark)}
+              type="button"
+              className="theme-toggle"
+              onClick={(event) => {
+                const next = !dark;
+                transitionTheme(next, () => setDark(next), event.currentTarget);
+              }}
               aria-label={dark ? "Aktifkan mode terang" : "Aktifkan mode gelap"}
+              title={dark ? "Mode terang" : "Mode gelap"}
             >
-              <WorkspaceIcon name={dark ? "sun" : "moon"} />
+              <span className="theme-toggle-icon" aria-hidden="true">
+                <WorkspaceIcon name={dark ? "sun" : "moon"} />
+              </span>
             </button>
           </div>
         </header>
@@ -747,7 +761,7 @@ function Workspace() {
               projectName={projectName}
             />
           ) : (
-            <>
+            <div className="requests-page">
               <div className="heading">
                 <div>
                   <h1>Daftar request</h1>
@@ -880,7 +894,7 @@ function Workspace() {
                   </div>
                 )}
               </section>
-            </>
+            </div>
           )}
         </div>
       </main>

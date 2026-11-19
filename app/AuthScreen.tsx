@@ -16,6 +16,7 @@ import { auth, db } from "./firebase";
 import { readWorkspaceRoute, workspaceHref } from "./workspaceRoute";
 import Logo from "./Logo";
 import WorkspaceIcon from "./WorkspaceIcon";
+import { transitionTheme } from "./themeTransition";
 import styles from "./auth.module.css";
 
 type IconName = "email" | "lock" | "person" | "eye" | "eye-off" | "enter";
@@ -116,11 +117,9 @@ export default function AuthScreen({ mode }: { mode: "login" | "register" }) {
     if (error) errorBox.current?.focus();
   }, [error]);
 
-  function toggleTheme() {
+  function toggleTheme(origin?: HTMLElement | null) {
     const next = !dark;
-    setDark(next);
-    document.documentElement.dataset.theme = next ? "dark" : "light";
-    localStorage.setItem("ruang-theme", next ? "dark" : "light");
+    transitionTheme(next, () => setDark(next), origin);
   }
   function unavailable() {
     setError(
@@ -435,9 +434,11 @@ export default function AuthScreen({ mode }: { mode: "login" | "register" }) {
             <button
               type="button"
               className={styles.theme}
-              onClick={toggleTheme}
+              onClick={(event) => toggleTheme(event.currentTarget)}
             >
-              <WorkspaceIcon name={dark ? "sun" : "moon"} />
+              <span className={styles.themeIcon} aria-hidden="true">
+                <WorkspaceIcon name={dark ? "sun" : "moon"} />
+              </span>
               {dark ? "Mode terang" : "Mode gelap"}
             </button>
           </div>

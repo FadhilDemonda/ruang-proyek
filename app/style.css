@@ -3153,3 +3153,294 @@ body { font-size: 14px; }
   .note-detail-actions-end button { flex: 1 1 140px; }
   .note-content-input { min-height: 280px; }
 }
+
+/* Smooth Theme View Transitions & Micro-interactions */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+html.vt-theme *,
+html.vt-theme *::before,
+html.vt-theme *::after {
+  transition: none !important;
+}
+
+html.theme-fade body,
+html.theme-fade aside,
+html.theme-fade header,
+html.theme-fade .account-card,
+html.theme-fade .project-card,
+html.theme-fade .note-card,
+html.theme-fade .todo-card,
+html.theme-fade .todo-list-row,
+html.theme-fade .task,
+html.theme-fade .archive-panel,
+html.theme-fade .todo-column,
+html.theme-fade .rp-profile,
+html.theme-fade .rp-header,
+html.theme-fade .rp-features,
+html.theme-fade .rp-about-band,
+html.theme-fade .rp-footer-band,
+html.theme-fade .rp-step-card,
+html.theme-fade .rp-screen {
+  transition:
+    background-color 260ms ease,
+    color 260ms ease,
+    border-color 260ms ease,
+    box-shadow 260ms ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* Tactile theme button hover glow & icon micro-interaction */
+.header-actions .theme-toggle {
+  inline-size: 40px;
+  min-inline-size: 40px;
+  block-size: 40px;
+  min-block-size: 40px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 200ms ease;
+}
+
+.header-actions .theme-toggle:hover {
+  background: var(--soft);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(34, 42, 26, 0.1);
+}
+
+.header-actions .theme-toggle-icon {
+  display: inline-grid;
+  place-items: center;
+}
+
+/* Smooth button, pill, and card color/elevation feedback */
+button,
+.projects-filter-pill,
+.todo-filter-pill,
+.notes-sort-pill,
+.back-button {
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 180ms ease,
+    opacity 160ms ease;
+}
+
+.project-card,
+.note-card,
+.todo-card,
+.todo-list-row,
+.task,
+.archive-list .entry {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 220ms ease;
+}
+
+.todo-card:hover,
+.todo-list-row:hover,
+.task:hover,
+.archive-list .entry:hover {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* Top-layer <dialog> entry & exit animations (modal + mobile sidebar) */
+dialog.modal-shell {
+  opacity: 0;
+  transition-property: opacity, transform, display, overlay;
+  transition-duration: 220ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-behavior: allow-discrete;
+}
+
+dialog.modal-shell[open] {
+  opacity: 1;
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+dialog.mobile-sidebar {
+  opacity: 0;
+  transition-property: opacity, translate, display, overlay;
+  transition-duration: 240ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-behavior: allow-discrete;
+}
+
+dialog.mobile-sidebar[open] {
+  opacity: 1;
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+dialog.modal-shell::backdrop,
+dialog.mobile-sidebar::backdrop {
+  background-color: rgba(23, 27, 19, 0);
+  transition-property: background-color, display, overlay;
+  transition-duration: 220ms;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
+}
+
+dialog.modal-shell[open]::backdrop,
+dialog.mobile-sidebar[open]::backdrop {
+  background-color: rgba(23, 27, 19, 0.52);
+  @starting-style {
+    background-color: rgba(23, 27, 19, 0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  aside {
+    transition: width 240ms cubic-bezier(0.22, 1, 0.36, 1), padding 240ms cubic-bezier(0.22, 1, 0.36, 1), background-color 220ms ease;
+  }
+
+  main {
+    transition: margin-left 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .header-actions .theme-toggle {
+    transition:
+      background-color 180ms ease,
+      color 180ms ease,
+      border-color 180ms ease,
+      box-shadow 200ms ease,
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .header-actions .theme-toggle:hover {
+    transform: translateY(-1px);
+  }
+
+  .header-actions .theme-toggle:active {
+    transform: scale(0.92);
+  }
+
+  .header-actions .theme-toggle-icon {
+    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .header-actions .theme-toggle:hover .theme-toggle-icon {
+    transform: rotate(-18deg) scale(1.12);
+  }
+
+  button:not(:disabled):active,
+  .sidebar-navigation nav button:active,
+  .sidebar-toggle:active,
+  .project-add:active {
+    transform: scale(0.975);
+  }
+
+  .project-card,
+  .note-card,
+  .task {
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      box-shadow 220ms ease,
+      transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .task:hover {
+    transform: translateY(-2px);
+  }
+
+  /* Smooth view transitions when clicking between workspace modules */
+  .projects-page,
+  .todo-page,
+  .requests-page,
+  .notes-page,
+  .notes-detail,
+  .project-detail-page {
+    animation: workspaceViewIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .select-menu,
+  .toast,
+  .message {
+    animation: subtlePopIn 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  dialog.modal-shell {
+    transform: scale(0.96) translateY(8px);
+  }
+
+  dialog.modal-shell[open] {
+    transform: scale(1) translateY(0);
+    @starting-style {
+      transform: scale(0.96) translateY(8px);
+    }
+  }
+
+  dialog.mobile-sidebar {
+    translate: -24px 0;
+  }
+
+  dialog.mobile-sidebar[open] {
+    translate: 0 0;
+    @starting-style {
+      translate: -24px 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.modal-shell,
+  dialog.mobile-sidebar,
+  dialog.modal-shell::backdrop,
+  dialog.mobile-sidebar::backdrop {
+    transition-duration: 100ms;
+  }
+}
+
+@keyframes workspaceViewIn {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes subtlePopIn {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Logo from "./Logo";
 import Preview from "./profil/Preview";
+import ThemeToggle from "./ThemeToggle";
 import "./profil/profil.css";
 
 export const metadata = {
@@ -50,6 +51,7 @@ export default function HomePage() {
             <a href="#tentang" className="rp-nav-link">
               Tentang
             </a>
+            <ThemeToggle />
             <Link className="rp-outline" href="/login">
               Masuk <span aria-hidden="true">↗</span>
             </Link>

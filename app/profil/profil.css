@@ -790,14 +790,107 @@
   .rp-footer .rp-brand {
     font-size: 15px;
   }
+
+  .rp-nav nav {
+    gap: 10px;
+  }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .rp-folder,
-  .rp-button,
-  .rp-button-secondary,
-  .rp-outline,
-  .rp-picker [role="tab"] {
-    transition: none;
+/* Tactile theme toggle & smooth landing interactions */
+.rp-theme-btn {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  min-block-size: 44px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--rp-line);
+  background: var(--rp-surface);
+  color: var(--rp-muted);
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 200ms ease;
+}
+
+.rp-theme-btn:hover {
+  background: var(--rp-cream);
+  border-color: var(--rp-sage-dark);
+  color: var(--rp-ink);
+  box-shadow: 0 4px 12px rgba(34, 42, 26, 0.1);
+}
+
+.rp-theme-btn .theme-toggle-icon {
+  display: inline-grid;
+  place-items: center;
+}
+
+.rp-step-card {
+  transition: border-color 180ms ease, box-shadow 220ms ease, background-color 180ms ease;
+}
+
+.rp-step-card:hover {
+  border-color: var(--rp-sage-mid);
+  box-shadow: var(--rp-shadow-soft);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.rp-profile) {
+    scroll-behavior: smooth;
+  }
+
+  .rp-theme-btn {
+    transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 200ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .rp-theme-btn:hover {
+    transform: translateY(-1px);
+  }
+
+  .rp-theme-btn:active {
+    transform: scale(0.93);
+  }
+
+  .rp-theme-btn .theme-toggle-icon {
+    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .rp-theme-btn:hover .theme-toggle-icon {
+    transform: rotate(-18deg) scale(1.12);
+  }
+
+  .rp-profile .rp-button:hover,
+  .rp-profile .rp-button-secondary:hover,
+  .rp-profile .rp-outline:hover {
+    transform: translateY(-1px);
+  }
+
+  .rp-profile .rp-button:active,
+  .rp-profile .rp-button-secondary:active,
+  .rp-profile .rp-outline:active,
+  .rp-picker [role="tab"]:active {
+    transform: scale(0.98);
+  }
+
+  .rp-step-card {
+    transition: border-color 180ms ease, box-shadow 220ms ease, background-color 180ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .rp-step-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .rp-panels [role="tabpanel"]:not([hidden]) .rp-panel-inner {
+    animation: rpPanelReveal 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes rpPanelReveal {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
   }
 }
