@@ -1049,6 +1049,56 @@ body:has(dialog[open]) {
   color: var(--primary);
   font-weight: 600;
 }
+.project-mode-switch {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 4px;
+  border-radius: 11px;
+  background: var(--soft);
+  border: 1px solid var(--border);
+}
+.project-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 6px 13px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 180ms ease;
+}
+.project-mode-btn svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.project-mode-btn:hover:not(.is-active) {
+  color: var(--text);
+  border-color: transparent;
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+.project-mode-btn.is-active {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+  box-shadow: 0 1px 3px rgba(34, 42, 26, 0.08);
+}
+@media (pointer: coarse) {
+  .project-mode-btn {
+    min-height: 44px;
+  }
+}
 .todo-hero-right {
   display: flex;
   align-items: center;

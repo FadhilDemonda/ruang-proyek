@@ -566,6 +566,7 @@ function Workspace() {
         loading={loading}
         section={section}
         projectId={projectFilter}
+        detailId={detailId}
         collapsed={collapsed}
         mobileOpen={mobileMenu}
         dark={dark}
@@ -755,6 +756,7 @@ function Workspace() {
               }}
               onEditTask={(task) => edit("todos", task)}
               onOpenTask={(task) => openDetail("todos", task.id)}
+              onOpenProjectDetail={(id) => openDetail("projects", id)}
               onChangeStatus={(task, status) => changeStatus(task, status)}
               onRemoveTask={(task) => remove("todos", task)}
               onDragEnd={handleDragEnd}

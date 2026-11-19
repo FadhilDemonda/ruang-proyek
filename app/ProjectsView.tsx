@@ -197,6 +197,24 @@ export default function ProjectsView({
                 <p className="detail-hero-desc">
                   {detail.description || "Belum ada deskripsi proyek."}
                 </p>
+                <div className="project-mode-switch" role="group" aria-label="Tampilan proyek">
+                  <button
+                    type="button"
+                    className="project-mode-btn"
+                    onClick={() => onOpenKanban(detail.id)}
+                  >
+                    <WorkspaceIcon name="todos" />
+                    <span>Kanban To-do</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="project-mode-btn is-active"
+                    aria-current="page"
+                  >
+                    <WorkspaceIcon name="projects" />
+                    <span>Isi Proyek</span>
+                  </button>
+                </div>
               </div>
             </div>
             <div className="detail-hero-actions">

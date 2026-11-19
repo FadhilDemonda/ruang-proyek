@@ -19,6 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Select from "./Select";
+import WorkspaceIcon from "./WorkspaceIcon";
 import { TODO_STATUSES, type Item } from "./types";
 
 type TodoStatus = (typeof TODO_STATUSES)[number];
@@ -43,6 +44,7 @@ type Props = {
   onAddTask: (status?: string) => void;
   onEditTask: (task: Item) => void;
   onOpenTask: (task: Item) => void;
+  onOpenProjectDetail: (projectId: string) => void;
   onChangeStatus: (task: Item, status: string) => void;
   onRemoveTask: (task: Item) => void;
   onDragEnd: (event: DragEndEvent) => void;
@@ -337,6 +339,26 @@ export default function TodoView(props: Props) {
             <p className="todo-hero-sub">
               {props.selectedProject ? "Tugas dan progres untuk proyek ini." : "Tugas dan progres dari seluruh proyekmu."}
             </p>
+            {props.selectedProject && (
+              <div className="project-mode-switch" role="group" aria-label="Tampilan proyek">
+                <button
+                  type="button"
+                  className="project-mode-btn is-active"
+                  aria-current="page"
+                >
+                  <WorkspaceIcon name="todos" />
+                  <span>Kanban To-do</span>
+                </button>
+                <button
+                  type="button"
+                  className="project-mode-btn"
+                  onClick={() => props.onOpenProjectDetail(props.selectedProject!.id)}
+                >
+                  <WorkspaceIcon name="projects" />
+                  <span>Isi Proyek</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

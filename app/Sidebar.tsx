@@ -14,6 +14,7 @@ type Props = {
   loading: boolean;
   section: Section;
   projectId: string;
+  detailId?: string | null;
   collapsed: boolean;
   mobileOpen: boolean;
   dark: boolean;
@@ -131,7 +132,10 @@ export default function Sidebar(props: Props) {
           <span className="eyebrow sidebar-label">Ruang kerja</span>
           <nav aria-label="Menu utama">
             {destinations.map(({ section, label }) => {
-              const active = props.section === section && !props.projectId;
+              const active =
+                props.section === section &&
+                !props.projectId &&
+                !(section === "projects" && props.detailId);
               return (
                 <button
                   type="button"
@@ -174,7 +178,8 @@ export default function Sidebar(props: Props) {
             <nav aria-label="Proyek saya" className="project-navigation">
               {props.projects.map((project) => {
                 const active =
-                  props.section === "todos" && props.projectId === project.id;
+                  (props.section === "todos" && props.projectId === project.id) ||
+                  (props.section === "projects" && props.detailId === project.id);
                 return (
                   <button
                     type="button"
