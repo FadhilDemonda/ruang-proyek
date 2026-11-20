@@ -173,10 +173,20 @@
   border-radius: 12px;
   box-shadow: 0 10px 28px rgba(27, 29, 17, 0.16);
 }
+.select-menu-portal {
+  position: fixed;
+  z-index: 60;
+  inset: auto;
+  margin: 0;
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  color: var(--text);
+}
 .select-option {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   width: 100%;
   min-height: 42px;
   text-align: left;
@@ -187,6 +197,7 @@
   color: var(--text);
   font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
   font-weight: 400;
+  white-space: nowrap;
 }
 .select-option.highlight {
   background: var(--soft);
@@ -907,7 +918,8 @@ header {
   gap: 12px;
   min-width: 0;
 }
-.header-location > span {
+.header-location > span,
+.header-location > nav {
   min-width: 0;
 }
 .quick label,
@@ -990,7 +1002,8 @@ body:has(dialog[open]) {
     align-items: center;
     min-height: 44px;
   }
-  .header-location > span {
+  .header-location > span,
+  .header-location > nav {
     font-size: 11px;
   }
   .header-actions > span {
@@ -1385,13 +1398,6 @@ body:has(dialog[open]) {
 }
 .todo-column-body {
   padding: 0 14px 14px;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 300px auto 460px;
-}
-@supports not (content-visibility: auto) {
-  .todo-column-body {
-    contain: layout style paint;
-  }
 }
 .todo-empty-slot {
   border: 1px dashed var(--border);
@@ -1578,7 +1584,7 @@ body:has(dialog[open]) {
 }
 .todo-card-controls .select-wrap {
   width: auto;
-  min-width: 128px;
+  min-width: 136px;
   font-size: 13px;
 }
 .todo-card-controls .select-trigger {
@@ -2019,10 +2025,32 @@ aside, .mobile-sidebar {
   border-color: transparent;
 }
 header { height: 60px; background: var(--surface); font-weight: 500; }
-.crumb { display: inline-flex; align-items: center; gap: 12px; color: var(--muted); }
-.crumb svg { width: 16px; }
-.crumb i { color: var(--muted); font-style: normal; opacity: .65; }
+.crumb { display: inline-flex; align-items: center; gap: 10px; min-width: 0; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.crumb svg { width: 16px; flex: none; }
+.crumb i { color: var(--muted); font-style: normal; opacity: .65; flex: none; }
 .crumb strong { font-weight: 600; color: var(--text); }
+.crumb-link {
+  min-height: 0;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: inherit;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crumb-link:hover {
+  background: var(--soft);
+  color: var(--text);
+}
+.crumb-link.is-current {
+  font-weight: 600;
+  color: var(--text);
+}
 .header-actions button { display: grid; place-items: center; border: 0; background: transparent; color: var(--muted); }
 .header-actions button:hover { background: var(--soft); }
 .workspace-date {

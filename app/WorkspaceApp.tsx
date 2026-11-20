@@ -608,10 +608,39 @@ function Workspace() {
             >
               Menu
             </button>
-            <span className="crumb">
-              <WorkspaceIcon name="workspace" /> Ruang kerja <i>/</i>{" "}
-              <strong>{labels[section]}</strong>
-            </span>
+            <nav className="crumb" aria-label="Breadcrumb">
+              <WorkspaceIcon name="workspace" />
+              <button
+                type="button"
+                className="crumb-link"
+                onClick={() => nav("projects")}
+              >
+                Ruang kerja
+              </button>
+              <i aria-hidden="true">/</i>
+              {section === "todos" && selectedProject ? (
+                <>
+                  <button
+                    type="button"
+                    className="crumb-link"
+                    onClick={() => nav("todos")}
+                  >
+                    {labels[section]}
+                  </button>
+                  <i aria-hidden="true">/</i>
+                  <button
+                    type="button"
+                    className="crumb-link is-current"
+                    title="Lihat detail proyek"
+                    onClick={() => openDetail("projects", selectedProject.id)}
+                  >
+                    {selectedProject.title}
+                  </button>
+                </>
+              ) : (
+                <strong>{labels[section]}</strong>
+              )}
+            </nav>
           </div>
           <div className="header-actions">
             <HeaderDate />

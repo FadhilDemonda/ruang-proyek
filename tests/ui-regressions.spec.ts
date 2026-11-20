@@ -174,6 +174,11 @@ test("existing workspace controls still work without browser errors", async ({ p
   await page.getByRole("dialog").getByRole("button", { name: "Batal", exact: true }).click();
   await page.getByRole("button", { name: "Buka Kanban proyek", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Audit proyek", exact: true })).toBeVisible();
+  const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
+  await expect(breadcrumb.getByRole("button", { name: "Audit proyek", exact: true })).toBeVisible();
+  await breadcrumb.getByRole("button", { name: "Audit proyek", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Audit proyek", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit proyek", exact: true })).toBeVisible();
 
   await page.getByRole("navigation", { name: "Menu utama" }).getByRole("button", { name: "To-do", exact: true }).click();
   await page.getByRole("button", { name: "Tampilan Daftar" }).click();
@@ -209,9 +214,19 @@ test("existing workspace controls still work without browser errors", async ({ p
   await expect(toast).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Audit tugas diperbarui", exact: true })).not.toBeVisible();
   await page.getByRole("button", { name: "Tampilan Kanban" }).click();
-  await expect(page.getByRole("region", { name: "Kolom Dikerjakan", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Kolom Belum Mulai", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Kolom Selesai", exact: true })).toBeVisible();
+  const colTodo = page.getByRole("region", { name: "Kolom Belum Mulai", exact: true });
+  const colProgress = page.getByRole("region", { name: "Kolom Dikerjakan", exact: true });
+  const colDone = page.getByRole("region", { name: "Kolom Selesai", exact: true });
+  await expect(colTodo).toBeVisible();
+  await expect(colProgress).toBeVisible();
+  await expect(colDone).toBeVisible();
+  const [boxTodo, boxProgress, boxDone] = await Promise.all([
+    colTodo.boundingBox(),
+    colProgress.boundingBox(),
+    colDone.boundingBox(),
+  ]);
+  expect(boxTodo!.x).toBeLessThan(boxProgress!.x);
+  expect(boxProgress!.x).toBeLessThan(boxDone!.x);
 
   await page.getByRole("navigation", { name: "Menu utama" }).getByRole("button", { name: "Request", exact: true }).click();
   await page.getByRole("button", { name: "+ Tambah request", exact: true }).click();
@@ -342,4 +357,63 @@ test("project cards are clickable anywhere with shadow separation and structured
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole("button", { name: "Kembali ke proyek", exact: true }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("kanban orders To-do -> Dikerjakan -> Selesai and keeps sparse column status dropdown unclipped", async ({ page }, testInfo) => {
+  await openWorkspace(page, "light");
+  await page.getByRole("navigation", { name: "Menu utama" })
+    .getByRole("button", { name: "To-do", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "To-do saya", exact: true })).toBeVisible();
+
+  const columns = page.locator(".todo-board > .todo-column");
+  await expect(columns).toHaveCount(3);
+  await expect(columns.nth(0)).toHaveAttribute("aria-label", "Kolom Belum Mulai");
+  await expect(columns.nth(1)).toHaveAttribute("aria-label", "Kolom Dikerjakan");
+  await expect(columns.nth(2)).toHaveAttribute("aria-label", "Kolom Selesai");
+
+  const card = columns.nth(0).locator(".todo-card").first();
+  await card.getByRole("combobox", { name: "Pindahkan Tugas antrean" }).click();
+  const listbox = page.getByRole("listbox");
+  await expect(listbox).toBeVisible();
+
+  const metrics = await listbox.evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    const optionRects = Array.from(el.querySelectorAll('[role="option"]')).map((opt) =>
+      opt.getBoundingClientRect(),
+    );
+    return {
+      rect: { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right, height: rect.height },
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      optionRects: optionRects.map((r) => ({ height: r.height, top: r.top, bottom: r.bottom })),
+    };
+  });
+
+  expect(metrics.scrollHeight).toBeLessThanOrEqual(metrics.clientHeight + 1);
+  expect(metrics.rect.bottom).toBeLessThanOrEqual(metrics.viewport.height);
+  expect(metrics.rect.right).toBeLessThanOrEqual(metrics.viewport.width);
+  expect(metrics.optionRects).toHaveLength(3);
+  for (const opt of metrics.optionRects) {
+    expect(opt.height).toBeGreaterThanOrEqual(40);
+    expect(opt.bottom).toBeLessThanOrEqual(metrics.rect.bottom + 1);
+  }
+  await page.screenshot({ path: testInfo.outputPath("todo-dropdown-unclipped.png"), fullPage: true });
+
+  await listbox.getByRole("option", { name: "Selesai", exact: true }).click();
+  await expect(columns.nth(2).getByRole("button", { name: "Tugas antrean", exact: true })).toBeVisible();
+
+  // Verify Select inside modal dialog also renders unclipped and handles Escape without closing modal.
+  await page.getByRole("button", { name: "+ Tambah tugas", exact: true }).first().click();
+  const dialog = page.getByRole("dialog", { name: "Tambah To-do" });
+  await dialog.getByRole("combobox", { name: "Status", exact: true }).click();
+  const modalListbox = dialog.getByRole("listbox");
+  await expect(modalListbox).toBeVisible();
+  const modalOptionBox = await modalListbox.getByRole("option", { name: "Selesai", exact: true }).boundingBox();
+  expect(modalOptionBox!.height).toBeGreaterThanOrEqual(40);
+  await page.keyboard.press("Escape");
+  await expect(modalListbox).not.toBeVisible();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
 });

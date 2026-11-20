@@ -58,19 +58,19 @@ type ColumnConfig = {
   emptyText: string;
 };
 
-// Display order mirrors the reference layout: active work first, queue second, completed third.
+// Order matches workflow progression: To-do -> Dikerjakan -> Selesai.
 const BOARD_COLUMNS: ColumnConfig[] = [
-  {
-    status: "Dikerjakan",
-    title: "Dikerjakan",
-    tone: "progress",
-    emptyText: "Belum ada tugas yang dikerjakan.",
-  },
   {
     status: "Belum Mulai",
     title: "Berikutnya (To-do)",
     tone: "todo",
     emptyText: "Belum ada tugas dalam antrean.",
+  },
+  {
+    status: "Dikerjakan",
+    title: "Dikerjakan",
+    tone: "progress",
+    emptyText: "Belum ada tugas yang dikerjakan.",
   },
   {
     status: "Selesai",
