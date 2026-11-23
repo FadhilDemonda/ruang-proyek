@@ -998,13 +998,14 @@ function Workspace() {
                   <p>Kelola permintaan masuk dan tindak lanjutnya.</p>
                 </div>
                 <button
-                  className="primary"
+                  className="primary todo-add-btn"
                   onClick={() => {
                     setConversion(null);
                     edit("requests");
                   }}
                 >
-                  + Tambah request
+                  <span className="btn-plus">+</span>{" "}
+                  <span>Tambah request</span>
                 </button>
               </div>
               <section className="archive-panel" aria-label={labels.requests}>

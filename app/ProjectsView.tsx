@@ -547,21 +547,18 @@ export default function ProjectsView({
             <div className="todo-stat">
               <dt>DIRENCANAKAN</dt>
               <dd className="tone-todo">
-                <span className="todo-stat-dot" aria-hidden="true" />
                 <span>{counts.planned}</span>
               </dd>
             </div>
             <div className="todo-stat">
               <dt>DIKERJAKAN</dt>
               <dd className="tone-progress">
-                <span className="todo-stat-dot" aria-hidden="true" />
                 <span>{counts.working}</span>
               </dd>
             </div>
             <div className="todo-stat">
               <dt>SELESAI</dt>
               <dd className="tone-done">
-                <span className="todo-stat-dot" aria-hidden="true" />
                 <span>{counts.done}</span>
               </dd>
             </div>
@@ -572,7 +569,8 @@ export default function ProjectsView({
             className="primary todo-add-btn"
             onClick={onAddProject}
           >
-            + Tambah proyek
+            <span className="btn-plus">+</span>{" "}
+            <span>Tambah proyek</span>
           </button>
         </div>
       </div>

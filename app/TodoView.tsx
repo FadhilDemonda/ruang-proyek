@@ -427,28 +427,24 @@ export default function TodoView(props: Props) {
             <div className="todo-stat">
               <dt>BELUM MULAI</dt>
               <dd className="tone-todo">
-                <span className="todo-stat-dot" aria-hidden="true" />
                 <span>{counts.todo}</span>
               </dd>
             </div>
             <div className="todo-stat">
               <dt>DIKERJAKAN</dt>
               <dd className="tone-progress">
-                <span className="todo-stat-dot" aria-hidden="true" />
                 <span>{counts.progress}</span>
               </dd>
             </div>
             <div className="todo-stat">
               <dt>ON REVIEW</dt>
               <dd className="tone-review">
-                <span className="todo-stat-dot" aria-hidden="true" />
                 <span>{counts.review}</span>
               </dd>
             </div>
             <div className="todo-stat">
               <dt>SELESAI</dt>
               <dd className="tone-done">
-                <span className="todo-stat-dot" aria-hidden="true" />
                 <span>{counts.done}</span>
               </dd>
             </div>
@@ -459,7 +455,8 @@ export default function TodoView(props: Props) {
             className="primary todo-add-btn"
             onClick={() => props.onAddTask()}
           >
-            + Tambah tugas
+            <span className="btn-plus">+</span>{" "}
+            <span>Tambah tugas</span>
           </button>
         </div>
       </div>
@@ -710,7 +707,8 @@ export default function TodoView(props: Props) {
                         className="todo-col-add"
                         onClick={() => props.onAddTask(col.status)}
                       >
-                        + Tambah tugas
+                        <span className="btn-plus">+</span>{" "}
+                        <span>Tambah tugas</span>
                       </button>
                     </div>
                   </TodoColumn>

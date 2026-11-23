@@ -1165,40 +1165,31 @@ body:has(dialog[open]) {
 .todo-stat dd.tone-todo {
   color: var(--text);
 }
-.todo-stat dd.tone-todo .todo-stat-dot {
-  background: var(--tone-todo);
-}
 .todo-stat dd.tone-progress {
   color: var(--tone-progress-text);
-}
-.todo-stat dd.tone-progress .todo-stat-dot {
-  background: var(--tone-progress);
 }
 .todo-stat dd.tone-review {
   color: var(--tone-review-text);
 }
-.todo-stat dd.tone-review .todo-stat-dot {
-  background: var(--tone-review);
-}
 .todo-stat dd.tone-done {
   color: var(--tone-done-text);
 }
-.todo-stat dd.tone-done .todo-stat-dot {
-  background: var(--tone-done);
-}
-.todo-stat-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  flex: none;
-}
 .todo-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-height: 44px;
-  padding: 9px 16px;
+  padding: 9px 18px;
   border-radius: 12px;
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
+}
+.btn-plus {
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 700;
 }
 .todo-toolbar {
   padding: 6px 8px;
@@ -1647,6 +1638,10 @@ body:has(dialog[open]) {
   border-color: var(--danger-border);
 }
 .todo-col-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
   margin-top: 8px;
   min-height: 38px;

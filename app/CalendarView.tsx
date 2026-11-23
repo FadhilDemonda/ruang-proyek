@@ -267,21 +267,18 @@ export default function CalendarView({
             <div className="todo-stat">
               <dt>BULAN INI</dt>
               <dd className="tone-todo">
-                <span className="todo-stat-dot" aria-hidden="true" />
                 <span>{monthStats.monthTotal}</span>
               </dd>
             </div>
             <div className="todo-stat">
               <dt>TERLAMBAT</dt>
               <dd className="tone-progress">
-                <span className="todo-stat-dot" aria-hidden="true" />
                 <span>{monthStats.overdueTotal}</span>
               </dd>
             </div>
             <div className="todo-stat">
               <dt>TANPA TANGGAL</dt>
               <dd className="tone-done">
-                <span className="todo-stat-dot" aria-hidden="true" />
                 <span>{monthStats.unscheduledTotal}</span>
               </dd>
             </div>
@@ -292,7 +289,8 @@ export default function CalendarView({
             className="primary todo-add-btn"
             onClick={() => onAddTaskOnDate(selectedDate)}
           >
-            + Tambah tugas
+            <span className="btn-plus">+</span>{" "}
+            <span>Tambah tugas</span>
           </button>
         </div>
       </div>
