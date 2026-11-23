@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Modal from "./Modal";
 import Select from "./Select";
 import WorkspaceIcon from "./WorkspaceIcon";
@@ -90,13 +90,15 @@ export default function NotesView({
   onError,
 }: Props) {
   const [editors, setEditors] = useState(() => new Map<string, Editor>());
-  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deletingBusy, setDeletingBusy] = useState(false);
   const [confirm, setConfirm] = useState<"discard" | "delete" | null>(null);
   const [pendingLeave, setPendingLeave] = useState<PendingLeave | null>(null);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "title">("recent");
   const [copiedNote, setCopiedNote] = useState(false);
   const [now] = useState(() => Date.now());
+  const savePromiseRef = useRef<Promise<Note | null> | null>(null);
 
   const projectMap = useMemo(
     () => new Map(projects.map((p) => [p.id, p])),
@@ -165,11 +167,115 @@ export default function NotesView({
 
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
+  const performSave = useCallback(
+    async (
+      snapshot: Draft,
+      sourceDetailId: string,
+      navigateAfter = false,
+    ): Promise<Note | null> => {
+      if (!snapshot.title.trim()) return null;
+      const run = async (): Promise<Note | null> => {
+        setSaving(true);
+        try {
+          const note = await onSave(snapshot);
+          const next: Draft = {
+            id: note.id,
+            title: note.title,
+            content: note.content,
+            projectId: note.projectId || "",
+          };
+          setEditors((previous) => {
+            const map = new Map(previous);
+            const existingEntry =
+              previous.get(note.id) ?? previous.get(sourceDetailId);
+            const currentDraft = existingEntry?.draft;
+            const hasNewerEdits =
+              currentDraft &&
+              (currentDraft.title !== snapshot.title ||
+                currentDraft.content !== snapshot.content ||
+                (currentDraft.projectId || "") !== (snapshot.projectId || ""));
+            const latestDraft: Draft = hasNewerEdits
+              ? { ...currentDraft, id: note.id }
+              : next;
+            if (sourceDetailId === "" && note.id !== "") {
+              map.delete("");
+            }
+            if (!navigateAfter) {
+              map.set(note.id, {
+                draft: latestDraft,
+                saved: next,
+                savedAt: note.updatedAt,
+              });
+            } else if (hasNewerEdits) {
+              map.set(note.id, {
+                draft: latestDraft,
+                saved: next,
+                savedAt: note.updatedAt,
+              });
+            } else {
+              map.delete(note.id);
+            }
+            return map;
+          });
+          if (sourceDetailId === "" && !navigateAfter) {
+            onCreated(note.id);
+          }
+          return note;
+        } catch {
+          return null;
+        } finally {
+          savePromiseRef.current = null;
+          setSaving(false);
+        }
+      };
+      const promise = run();
+      savePromiseRef.current = promise;
+      return promise;
+    },
+    [onSave, onCreated],
+  );
+
+  useEffect(() => {
+    if (!active || !draft || !dirty || !draft.title.trim() || saving || deletingBusy) {
+      return;
+    }
+    const snapshot: Draft = {
+      id: draft.id,
+      title: draft.title,
+      content: draft.content,
+      projectId: draft.projectId || "",
+    };
+    const sourceId = detailId ?? "";
+    const timer = window.setTimeout(() => {
+      void performSave(snapshot, sourceId);
+    }, 450);
+    return () => window.clearTimeout(timer);
+  }, [active, draft, dirty, detailId, saving, deletingBusy, performSave]);
+
   useEffect(() => {
     if (!leaveRequest) return;
     if (dirty) {
-      setPendingLeave({ kind: "leave" });
-      setConfirm("discard");
+      if (draft?.title.trim()) {
+        const snapshot: Draft = {
+          id: draft.id,
+          title: draft.title,
+          content: draft.content,
+          projectId: draft.projectId || "",
+        };
+        const sourceId = detailId ?? "";
+        void (async () => {
+          if (savePromiseRef.current) await savePromiseRef.current;
+          const savedNote = await performSave(snapshot, sourceId, true);
+          if (savedNote) onLeaveResolved(true);
+          else {
+            setPendingLeave({ kind: "leave" });
+            setConfirm("discard");
+          }
+        })();
+      } else {
+        setPendingLeave({ kind: "leave" });
+        setConfirm("discard");
+      }
     } else onLeaveResolved(true);
   }, [leaveRequest]);
 
@@ -199,19 +305,37 @@ export default function NotesView({
     updateEditor(detailId, { draft, saved, savedAt: editor?.savedAt });
   }
 
+  async function flushBeforeLeave(proceed: () => void, leaveTarget: PendingLeave) {
+    if (!dirty) {
+      if (savePromiseRef.current) await savePromiseRef.current;
+      proceed();
+      return;
+    }
+    if (draft?.title.trim()) {
+      if (savePromiseRef.current) await savePromiseRef.current;
+      const snapshot: Draft = {
+        id: draft.id,
+        title: draft.title,
+        content: draft.content,
+        projectId: draft.projectId || "",
+      };
+      const savedNote = await performSave(snapshot, detailId ?? "", true);
+      if (savedNote) {
+        proceed();
+        return;
+      }
+    }
+    setPendingLeave(leaveTarget);
+    setConfirm("discard");
+  }
+
   function requestBack() {
-    if (dirty) {
-      setPendingLeave({ kind: "back" });
-      setConfirm("discard");
-    } else onBack();
+    void flushBeforeLeave(onBack, { kind: "back" });
   }
 
   function requestSwitch(note: Note) {
     if (note.id === draft?.id) return;
-    if (dirty) {
-      setPendingLeave({ kind: "switch", id: note.id });
-      setConfirm("discard");
-    } else onOpen(note.id);
+    void flushBeforeLeave(() => onOpen(note.id), { kind: "switch", id: note.id });
   }
 
   function resolveDiscard(discarded: boolean) {
@@ -234,33 +358,22 @@ export default function NotesView({
     }
   }
 
-  async function save() {
-    if (!draft || detailId == null || busy || !draft.title.trim()) return;
-    setBusy(true);
-    try {
-      const note = await onSave(draft);
-      const next = {
-        id: note.id,
-        title: note.title,
-        content: note.content,
-        projectId: note.projectId || "",
-      };
-      updateEditor(note.id, { draft: next, saved: next, savedAt: note.updatedAt });
-      if (!detailId) {
-        updateEditor(detailId, null);
-        onCreated(note.id);
-      }
-      onNotice(detailId ? "Catatan tersimpan." : "Catatan dibuat.");
-    } catch {
-      // The workspace displays the save error.
-    } finally {
-      setBusy(false);
-    }
+  async function saveImmediate() {
+    if (!draft || detailId == null || saving || deletingBusy || !draft.title.trim()) return;
+    await performSave(
+      {
+        id: draft.id,
+        title: draft.title,
+        content: draft.content,
+        projectId: draft.projectId || "",
+      },
+      detailId,
+    );
   }
 
   async function remove() {
     if (!draft?.id) return;
-    setBusy(true);
+    setDeletingBusy(true);
     try {
       await onDelete({ ...draft, updatedAt: 0 });
       setConfirm(null);
@@ -270,7 +383,7 @@ export default function NotesView({
     } catch {
       // Keep the editor open after a failed delete.
     } finally {
-      setBusy(false);
+      setDeletingBusy(false);
     }
   }
 
@@ -298,12 +411,20 @@ export default function NotesView({
       .filter((n) => n.id !== draft.id)
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 4);
-    const saveState = dirty ? "dirty" : isNew ? "new" : "saved";
-    const saveLabel = dirty
-      ? "Belum disimpan"
-      : isNew
-        ? "Draf baru"
-        : "Tersimpan";
+    const saveState = saving || (dirty && Boolean(draft.title.trim()))
+      ? "dirty"
+      : dirty
+        ? "new"
+        : isNew
+          ? "new"
+          : "saved";
+    const saveLabel = saving || (dirty && Boolean(draft.title.trim()))
+      ? "Menyimpan…"
+      : dirty
+        ? "Isi judul untuk simpan"
+        : isNew
+          ? "Draf baru"
+          : "Tersimpan";
 
     return (
       <section
@@ -312,7 +433,7 @@ export default function NotesView({
         onKeyDown={(event) => {
           if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
             event.preventDefault();
-            void save();
+            void saveImmediate();
           }
         }}
       >
@@ -328,26 +449,19 @@ export default function NotesView({
             </span>
           </div>
 
-          <div className="note-detail-actions-end">
-            {!isNew && (
+          {!isNew && (
+            <div className="note-detail-actions-end">
               <button
                 type="button"
-                className="danger-button"
+                className="danger-button note-delete-btn"
                 onClick={() => setConfirm("delete")}
-                disabled={busy}
+                disabled={deletingBusy}
               >
-                Hapus catatan
+                <WorkspaceIcon name="trash" />
+                <span>Hapus catatan</span>
               </button>
-            )}
-            <button
-              type="button"
-              className="primary"
-              onClick={save}
-              disabled={busy || !draft.title.trim()}
-            >
-              {busy ? "Menyimpan…" : "Simpan"}
-            </button>
-          </div>
+            </div>
+          )}
         </div>
 
         <div className="note-detail-layout">
@@ -357,7 +471,7 @@ export default function NotesView({
                 {isNew ? "Catatan baru" : draft.title || "Tanpa judul"}
               </h1>
               <span className="note-editor-hint">
-                Ketik langsung di catatan · Ctrl+S untuk simpan
+                Ketik langsung · Tersimpan otomatis
               </span>
             </div>
 
@@ -372,7 +486,7 @@ export default function NotesView({
                 }
                 placeholder="Tulis judul catatan"
                 autoFocus={isNew}
-                disabled={busy}
+                disabled={deletingBusy}
               />
             </div>
 
@@ -383,7 +497,7 @@ export default function NotesView({
                   id="note-project-select"
                   aria-label="Proyek terkait catatan"
                   value={draft.projectId || ""}
-                  disabled={busy}
+                  disabled={deletingBusy}
                   onChange={(event) =>
                     setDraft({ ...draft, projectId: event.target.value })
                   }
@@ -420,7 +534,7 @@ export default function NotesView({
                 placeholder="Mulai menulis langsung di sini…"
                 rows={16}
                 autoFocus={!isNew}
-                disabled={busy}
+                disabled={deletingBusy}
               />
             </div>
           </div>
@@ -518,7 +632,7 @@ export default function NotesView({
           >
             <div className="dialog card">
               <h2 id="discard-note-heading">Buang perubahan?</h2>
-              <p>Perubahan pada catatan ini belum disimpan.</p>
+              <p>Catatan belum memiliki judul sehingga perubahan belum dapat disimpan otomatis.</p>
               <div className="row">
                 <button type="button" onClick={() => resolveDiscard(false)}>
                   Tetap edit
@@ -547,7 +661,7 @@ export default function NotesView({
                 <button
                   type="button"
                   onClick={() => setConfirm(null)}
-                  disabled={busy}
+                  disabled={deletingBusy}
                 >
                   Batal
                 </button>
@@ -555,7 +669,7 @@ export default function NotesView({
                   type="button"
                   className="primary"
                   onClick={remove}
-                  disabled={busy}
+                  disabled={deletingBusy}
                 >
                   Hapus
                 </button>

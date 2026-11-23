@@ -27,45 +27,58 @@ test.describe("Notes", () => {
       .getByRole("button", { name: "Proyek lama", exact: true })).toBeVisible();
   });
 
-  test("creates, saves, discards, and deletes a note through its detail screen", async ({ page }, testInfo) => {
+  test("auto-saves, flushes on navigation, prompts on untitled draft, and deletes a note through its detail screen", async ({ page }, testInfo) => {
     await openLegacyWorkspace(page);
     await page.getByRole("navigation", { name: "Menu utama" })
       .getByRole("button", { name: "Notes", exact: true }).click();
     await page.locator(".notes-page > .heading")
       .getByRole("button", { name: "Tambah catatan", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Catatan baru", exact: true })).toBeVisible();
-    await page.getByLabel("Judul catatan").fill("Rencana mingguan");
-    await page.getByLabel("Isi catatan").fill("Susun prioritas hari Senin.");
-    await page.getByRole("button", { name: "Simpan", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Hapus catatan", exact: true })).toBeVisible();
-    await page.screenshot({ path: testInfo.outputPath("note-detail.png"), fullPage: true });
-    await page.getByLabel("Isi catatan").fill("Perubahan yang belum disimpan");
+    await expect(page.getByRole("button", { name: "Simpan", exact: true })).toHaveCount(0);
+
+    // Untitled draft with content still prompts before discarding
+    await page.getByLabel("Isi catatan").fill("Isi tanpa judul");
     await page.getByRole("button", { name: "Kembali ke Notes", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "Buang perubahan?", exact: true })).toBeVisible();
-    await page.getByRole("dialog").getByRole("button", { name: "Buang perubahan", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Tetap edit", exact: true }).click();
+
+    await page.getByLabel("Judul catatan").fill("Rencana mingguan");
+    await page.getByLabel("Isi catatan").fill("Susun prioritas hari Senin.");
+    await expect(page.locator(".note-save-pill")).toHaveText("Tersimpan");
+    await expect(page.getByRole("button", { name: "Hapus catatan", exact: true })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath("note-detail.png"), fullPage: true });
+
+    // Edit and immediately go back -> flushes save without discard modal
+    await page.getByLabel("Isi catatan").fill("Perubahan otomatis tersimpan");
+    await page.getByRole("button", { name: "Kembali ke Notes", exact: true }).click();
     const noteCard = page.getByRole("button", { name: "Buka catatan Rencana mingguan", exact: true });
     await expect(noteCard).toBeVisible();
     await noteCard.click();
-    await expect(page.getByLabel("Isi catatan")).toHaveValue("Susun prioritas hari Senin.");
+    await expect(page.getByLabel("Isi catatan")).toHaveValue("Perubahan otomatis tersimpan");
+
+    // Edit and immediately navigate to To-do -> flushes save automatically
     await page.getByLabel("Isi catatan").fill("Perubahan sebelum pindah halaman");
     await page.getByRole("navigation", { name: "Menu utama" })
       .getByRole("button", { name: "To-do", exact: true }).click();
-    await expect(page.getByRole("dialog", { name: "Buang perubahan?", exact: true })).toBeVisible();
-    await page.getByRole("dialog").getByRole("button", { name: "Tetap edit", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Rencana mingguan", exact: true })).toBeVisible();
-    await page.getByRole("navigation", { name: "Menu utama" })
-      .getByRole("button", { name: "To-do", exact: true }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Buang perubahan", exact: true }).click();
     await expect(page.getByRole("heading", { name: "To-do saya", exact: true })).toBeVisible();
+
     await page.getByRole("navigation", { name: "Menu utama" })
       .getByRole("button", { name: "Notes", exact: true }).click();
     await page.getByRole("button", { name: "Buka catatan Rencana mingguan", exact: true }).click();
-    await expect(page.getByLabel("Isi catatan")).toHaveValue("Susun prioritas hari Senin.");
-    await page.getByRole("button", { name: "Hapus catatan", exact: true }).click();
+    await expect(page.getByLabel("Isi catatan")).toHaveValue("Perubahan sebelum pindah halaman");
+
+    // Verify compact mobile Hapus catatan button size
+    await page.setViewportSize({ width: 390, height: 844 });
+    const deleteBtn = page.getByRole("button", { name: "Hapus catatan", exact: true });
+    const deleteBox = await deleteBtn.boundingBox();
+    expect(deleteBox!.width).toBeLessThan(200);
+    expect(deleteBox!.height).toBeLessThanOrEqual(44);
+
+    await deleteBtn.click();
     await expect(page.getByRole("dialog", { name: "Hapus Rencana mingguan?", exact: true })).toBeVisible();
     await page.getByRole("dialog").getByRole("button", { name: "Batal", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Rencana mingguan", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Hapus catatan", exact: true }).click();
+    await deleteBtn.click();
     await page.getByRole("dialog").getByRole("button", { name: "Hapus", exact: true }).click();
     await expect(page.getByText("Belum ada catatan")).toBeVisible();
   });
@@ -130,18 +143,16 @@ test.describe("Notes", () => {
     await expect(page.locator(".note-save-pill")).toHaveText("Tersimpan");
 
     await page.getByLabel("Isi catatan").fill("Satu dua tiga empat");
-    await expect(page.locator(".note-save-pill")).toHaveText("Belum disimpan");
     await expect(page.locator(".note-stat-cell").filter({ hasText: "Kata" })).toContainText("4");
-
-    await page.keyboard.press("Control+s");
     await expect(page.locator(".note-save-pill")).toHaveText("Tersimpan");
     await page.screenshot({ path: testInfo.outputPath("notes-detail-light.png"), fullPage: true });
 
     await page.getByLabel("Isi catatan").fill("Ubah sebelum pindah catatan");
     await page.getByRole("navigation", { name: "Beralih catatan" })
       .getByRole("button", { name: /Catatan Beta/ }).click();
-    await expect(page.getByRole("dialog", { name: "Buang perubahan?", exact: true })).toBeVisible();
-    await page.getByRole("dialog").getByRole("button", { name: "Buang perubahan", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Catatan Beta", exact: true })).toBeVisible();
+    await page.getByRole("navigation", { name: "Beralih catatan" })
+      .getByRole("button", { name: /Catatan Alpha/ }).click();
+    await expect(page.getByLabel("Isi catatan")).toHaveValue("Ubah sebelum pindah catatan");
   });
 });

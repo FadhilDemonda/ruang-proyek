@@ -3043,6 +3043,21 @@ body { font-size: 14px; }
   justify-content: flex-end;
   gap: 8px;
 }
+.note-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 6px 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.note-delete-btn svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
 .danger-button {
   border-color: var(--danger-border);
   color: var(--danger-text);
@@ -3254,12 +3269,12 @@ body { font-size: 14px; }
   .notes-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .note-card-open { min-height: 190px; padding: 18px; }
   .notes-empty { padding: 26px 20px; }
-  .note-detail-actions { align-items: stretch; flex-direction: column; }
-  .note-detail-actions-start { justify-content: space-between; }
+  .note-detail-actions { align-items: center; justify-content: space-between; gap: 10px; }
+  .note-detail-actions-start { flex: 1 1 auto; justify-content: flex-start; gap: 8px; }
   .note-detail-actions-start > .back-button,
-  .detail-nav > .back-button { min-height: 44px; align-self: flex-start; }
-  .note-detail-actions-end { justify-content: stretch; }
-  .note-detail-actions-end button { flex: 1 1 140px; }
+  .detail-nav > .back-button { min-height: 40px; align-self: flex-start; }
+  .note-detail-actions-end { flex: none; justify-content: flex-end; }
+  .note-detail-actions-end .note-delete-btn { flex: none; min-height: 38px; padding: 6px 11px; font-size: 12.5px; }
   .note-content-input { min-height: 280px; }
 }
 

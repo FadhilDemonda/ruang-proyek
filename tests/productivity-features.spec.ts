@@ -291,8 +291,7 @@ test.describe("Produktivitas Harian & Integrasi Antar-Modul", () => {
     await expect(page.getByRole("combobox", { name: "Proyek terkait catatan" })).toContainText("Desain Ulang Web");
     await page.getByLabel("Judul catatan").fill("Keputusan Tipografi");
     await page.getByLabel("Isi catatan").fill("Gunakan Plus Jakarta Sans untuk seluruh workspace.");
-    await page.getByRole("button", { name: "Simpan", exact: true }).click();
-    await expect(page.locator(".workspace-toast")).toContainText("Catatan dibuat.");
+    await expect(page.locator(".note-save-pill")).toHaveText("Tersimpan");
 
     // Jump back to project via Buka proyek button
     await page.getByRole("button", { name: "Buka proyek", exact: true }).click();
