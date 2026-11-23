@@ -1,6 +1,6 @@
 import type { Section } from "./types";
 
-export type WorkspaceSection = Section | "notes";
+export type WorkspaceSection = Section | "notes" | "overview" | "calendar";
 
 type WorkspaceRoute = {
   section: WorkspaceSection;
@@ -10,21 +10,33 @@ type WorkspaceRoute = {
 
 export function readWorkspaceRoute(params: Pick<URLSearchParams, "get">) {
   const value = params.get("section");
-  const section = value === "todos" || value === "requests" || value === "notes"
-    ? value
-    : "projects";
+  const section: WorkspaceSection =
+    value === "projects" ||
+    value === "todos" ||
+    value === "requests" ||
+    value === "notes" ||
+    value === "calendar"
+      ? value
+      : "overview";
   const detailId = params.get("detail");
+  const supportsProject =
+    section === "todos" || section === "notes" || section === "calendar";
   return {
     section,
     detailId: section === "notes" ? detailId : detailId || null,
-    projectId: section === "todos" ? params.get("project") || "" : "",
+    projectId: supportsProject ? params.get("project") || "" : "",
   } satisfies WorkspaceRoute;
 }
 
 export function workspaceHref({ section, detailId, projectId }: WorkspaceRoute) {
   const params = new URLSearchParams();
-  if (section !== "projects" || detailId != null) params.set("section", section);
+  if (section !== "overview" || detailId != null) params.set("section", section);
   if (detailId != null) params.set("detail", detailId);
-  if (section === "todos" && projectId) params.set("project", projectId);
+  if (
+    (section === "todos" || section === "notes" || section === "calendar") &&
+    projectId
+  ) {
+    params.set("project", projectId);
+  }
   return params.size ? `/workspace?${params}` : "/workspace";
 }

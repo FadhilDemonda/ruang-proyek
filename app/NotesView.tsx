@@ -2,18 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Modal from "./Modal";
+import Select from "./Select";
 import WorkspaceIcon from "./WorkspaceIcon";
-import type { Note } from "./types";
+import type { Item, Note } from "./types";
 
-type Draft = Pick<Note, "id" | "title" | "content">;
+type Draft = Pick<Note, "id" | "title" | "content" | "projectId">;
 type Editor = { draft: Draft; saved: Draft; savedAt?: number };
 
 type Props = {
   notes: Note[];
+  projects: Item[];
+  projectFilter: string;
   active: boolean;
   detailId: string | null;
   loading: boolean;
   storageLabel: string;
+  onProjectFilterChange: (projectId: string) => void;
+  onOpenProject: (projectId: string) => void;
   onOpen: (id: string) => void;
   onBack: () => void;
   onCreated: (id: string) => void;
@@ -31,7 +36,12 @@ type PendingLeave =
   | { kind: "leave" }
   | { kind: "switch"; id: string };
 
-const emptyDraft = (): Draft => ({ id: "", title: "", content: "" });
+const emptyDraft = (projectId = ""): Draft => ({
+  id: "",
+  title: "",
+  content: "",
+  projectId,
+});
 
 const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -60,10 +70,14 @@ function textMetrics(content: string) {
 
 export default function NotesView({
   notes,
+  projects,
+  projectFilter,
   active,
   detailId,
   loading,
   storageLabel,
+  onProjectFilterChange,
+  onOpenProject,
   onOpen,
   onBack,
   onCreated,
@@ -84,6 +98,11 @@ export default function NotesView({
   const [copiedNote, setCopiedNote] = useState(false);
   const [now] = useState(() => Date.now());
 
+  const projectMap = useMemo(
+    () => new Map(projects.map((p) => [p.id, p])),
+    [projects],
+  );
+
   const sorted = useMemo(() => {
     const copy = [...notes];
     if (sortBy === "title") {
@@ -94,22 +113,39 @@ export default function NotesView({
 
   const visibleNotes = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return sorted;
-    return sorted.filter(
-      (note) =>
+    return sorted.filter((note) => {
+      if (projectFilter === "__none__" && note.projectId) return false;
+      if (
+        projectFilter &&
+        projectFilter !== "__none__" &&
+        note.projectId !== projectFilter
+      ) {
+        return false;
+      }
+      if (!query) return true;
+      const linkedProject = note.projectId ? projectMap.get(note.projectId)?.title || "" : "";
+      return (
         note.title.toLowerCase().includes(query) ||
-        note.content.toLowerCase().includes(query),
-    );
-  }, [sorted, search]);
+        note.content.toLowerCase().includes(query) ||
+        linkedProject.toLowerCase().includes(query)
+      );
+    });
+  }, [sorted, search, projectFilter, projectMap]);
 
   const activeRecord = detailId ? notes.find((note) => note.id === detailId) : undefined;
   const editor = detailId == null ? undefined : editors.get(detailId);
   const dirty = Boolean(editor && (
-    editor.draft.title !== editor.saved.title || editor.draft.content !== editor.saved.content
+    editor.draft.title !== editor.saved.title ||
+    editor.draft.content !== editor.saved.content ||
+    (editor.draft.projectId || "") !== (editor.saved.projectId || "")
   ));
+  const initialProjectId =
+    projectFilter && projectFilter !== "__none__" && projectMap.has(projectFilter)
+      ? projectFilter
+      : "";
   const saved = !dirty && activeRecord && activeRecord.updatedAt >= (editor?.savedAt ?? 0)
     ? activeRecord
-    : editor?.saved ?? (detailId === "" ? emptyDraft() : null);
+    : editor?.saved ?? (detailId === "" ? emptyDraft(initialProjectId) : null);
   const draft = dirty ? editor!.draft : saved;
 
   useEffect(() => {
@@ -203,7 +239,12 @@ export default function NotesView({
     setBusy(true);
     try {
       const note = await onSave(draft);
-      const next = { id: note.id, title: note.title, content: note.content };
+      const next = {
+        id: note.id,
+        title: note.title,
+        content: note.content,
+        projectId: note.projectId || "",
+      };
       updateEditor(note.id, { draft: next, saved: next, savedAt: note.updatedAt });
       if (!detailId) {
         updateEditor(detailId, null);
@@ -333,6 +374,38 @@ export default function NotesView({
                 autoFocus={isNew}
                 disabled={busy}
               />
+            </div>
+
+            <div className="note-field">
+              <label htmlFor="note-project-select">Proyek terkait</label>
+              <div className="note-project-field-row">
+                <Select
+                  id="note-project-select"
+                  aria-label="Proyek terkait catatan"
+                  value={draft.projectId || ""}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setDraft({ ...draft, projectId: event.target.value })
+                  }
+                >
+                  <option value="">Catatan mandiri (tanpa proyek)</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.title}
+                    </option>
+                  ))}
+                </Select>
+                {draft.projectId && projectMap.has(draft.projectId) && (
+                  <button
+                    type="button"
+                    className="note-open-project-btn"
+                    onClick={() => onOpenProject(draft.projectId!)}
+                  >
+                    <span>Buka proyek</span>
+                    <WorkspaceIcon name="arrowRight" />
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="note-field note-field-body">
@@ -551,27 +624,48 @@ export default function NotesView({
             )}
           </div>
 
-          <div
-            className="todo-filter-pills notes-sort-pills"
-            role="group"
-            aria-label="Urutan catatan"
-          >
-            <button
-              type="button"
-              className="todo-pill-btn"
-              aria-pressed={sortBy === "recent"}
-              onClick={() => setSortBy("recent")}
+          <div className="notes-toolbar-right">
+            {projects.length > 0 && (
+              <div className="todo-project-picker">
+                <WorkspaceIcon name="folder" />
+                <Select
+                  aria-label="Filter proyek catatan"
+                  value={projectFilter}
+                  onChange={(event) => onProjectFilterChange(event.target.value)}
+                >
+                  <option value="">Semua Proyek</option>
+                  <option value="__none__">Catatan mandiri</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.title}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
+
+            <div
+              className="todo-filter-pills notes-sort-pills"
+              role="group"
+              aria-label="Urutan catatan"
             >
-              Terbaru
-            </button>
-            <button
-              type="button"
-              className="todo-pill-btn"
-              aria-pressed={sortBy === "title"}
-              onClick={() => setSortBy("title")}
-            >
-              Judul A–Z
-            </button>
+              <button
+                type="button"
+                className="todo-pill-btn"
+                aria-pressed={sortBy === "recent"}
+                onClick={() => setSortBy("recent")}
+              >
+                Terbaru
+              </button>
+              <button
+                type="button"
+                className="todo-pill-btn"
+                aria-pressed={sortBy === "title"}
+                onClick={() => setSortBy("title")}
+              >
+                Judul A–Z
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -583,6 +677,9 @@ export default function NotesView({
           {visibleNotes.map((note) => {
             const isFresh =
               note.updatedAt > 0 && now - note.updatedAt < FRESH_WINDOW_MS;
+            const linkedProject = note.projectId
+              ? projectMap.get(note.projectId)
+              : undefined;
             return (
               <article
                 key={note.id}
@@ -597,9 +694,17 @@ export default function NotesView({
                   aria-label={`Buka catatan ${note.title}`}
                 >
                   <div className="note-card-head">
-                    <span className="note-card-badge">
-                      {isFresh ? "Baru diedit" : "Catatan"}
-                    </span>
+                    <div className="note-card-badges">
+                      <span className="note-card-badge">
+                        {isFresh ? "Baru diedit" : "Catatan"}
+                      </span>
+                      {linkedProject && (
+                        <span className="note-project-chip">
+                          <WorkspaceIcon name="folder" />
+                          <span>{linkedProject.title}</span>
+                        </span>
+                      )}
+                    </div>
                     <span className="note-card-icon" aria-hidden="true">
                       <WorkspaceIcon name="notes" />
                     </span>
@@ -622,8 +727,14 @@ export default function NotesView({
       ) : notes.length ? (
         <div className="notes-empty card">
           <h2>Catatan tidak ditemukan</h2>
-          <p>Coba kata kunci lain untuk menemukan catatan yang kamu cari.</p>
-          <button type="button" onClick={() => setSearch("")}>
+          <p>Coba kata kunci atau filter proyek lain untuk menemukan catatan yang kamu cari.</p>
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              onProjectFilterChange("");
+            }}
+          >
             Reset pencarian
           </button>
         </div>

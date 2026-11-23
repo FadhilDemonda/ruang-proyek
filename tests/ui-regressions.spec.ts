@@ -14,7 +14,7 @@ async function openWorkspace(page: Page, theme: "light" | "dark" = "light") {
       ],
     }));
   }, theme);
-  await page.goto("/workspace");
+  await page.goto("/workspace?section=projects");
   await expect(page.getByRole("heading", { name: "Proyek saya" })).toBeVisible();
 }
 
@@ -69,7 +69,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     const button = page.getByRole("navigation", { name: "Menu utama" })
-      .getByRole("button", { name: "To-do", exact: true });
+      .getByRole("button", { name: "Hari Ini", exact: true });
     await expect(button).toBeFocused();
     expect(await button.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
     expect(await button.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe("none");
@@ -87,7 +87,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     const dialog = page.getByRole("dialog", { name: "Menu ruang kerja" });
-    const button = dialog.getByRole("button", { name: "To-do", exact: true });
+    const button = dialog.getByRole("button", { name: "Hari Ini", exact: true });
     await expect(button).toBeFocused();
     expect(await button.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
     expect(await button.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe("none");
@@ -245,7 +245,7 @@ test("existing workspace controls still work without browser errors", async ({ p
   await page.getByRole("link", { name: "Buat akun", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Buat akun baru" })).toBeVisible();
   await page.getByRole("link", { name: "Buka ruang kerja lokal" }).click();
-  await expect(page.getByRole("heading", { name: "Proyek saya" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hari ini", exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -270,7 +270,7 @@ test("restores every detail with browser Back and Forward", async ({ page }) => 
   for (const section of sections) {
     await nav.getByRole("button", { name: section.menu, exact: true }).click();
     await page.locator("main").getByRole("button", { name: section.trigger, exact: true }).click();
-    const detailUrl = `/?section=${section.section}&detail=${section.id}`;
+    const detailUrl = `/workspace?section=${section.section}&detail=${section.id}`;
     await expect(page).toHaveURL(detailUrl);
     await expect(page.getByRole("heading", { name: section.title, exact: true })).toBeVisible();
     if (section.section === "notes") await page.getByLabel("Isi catatan").fill("Draf dari detail");
@@ -320,7 +320,7 @@ test("project cards are clickable anywhere with shadow separation and structured
       notes: [],
     }));
   });
-  await page.goto("/workspace");
+  await page.goto("/workspace?section=projects");
 
   const region = page.getByRole("region", { name: "Proyek" });
   const cards = region.locator(".project-card");

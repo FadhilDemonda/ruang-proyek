@@ -20,9 +20,16 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import Select from "./Select";
 import WorkspaceIcon from "./WorkspaceIcon";
-import { TODO_STATUSES, type Item } from "./types";
+import { TODO_PRIORITIES, TODO_STATUSES, type Item, type TodoPriority } from "./types";
 
 type TodoStatus = (typeof TODO_STATUSES)[number];
+
+function priorityTone(priority?: TodoPriority | null) {
+  if (priority === "Tinggi") return "high";
+  if (priority === "Sedang") return "medium";
+  if (priority === "Rendah") return "low";
+  return "";
+}
 
 type Props = {
   todos: Item[];
@@ -33,11 +40,13 @@ type Props = {
   loading: boolean;
   search: string;
   filter: string;
+  priorityFilter: string;
   projectFilter: string;
   view: "list" | "board";
   mobileColumn: string;
   onSearchChange: (value: string) => void;
   onFilterChange: (value: string) => void;
+  onPriorityFilterChange: (value: string) => void;
   onProjectFilterChange: (id: string) => void;
   onViewChange: (view: "list" | "board") => void;
   onMobileColumnChange: (status: string) => void;
@@ -195,6 +204,8 @@ function TodoTaskCard({
   const overdue = Boolean(
     task.date && task.status !== "Selesai" && task.date < today,
   );
+  const checklist = task.checklist || [];
+  const checklistDone = checklist.filter((entry) => entry.done).length;
 
   return (
     <article
@@ -209,6 +220,13 @@ function TodoTaskCard({
       <div className="todo-card-top">
         <div className="todo-card-tags">
           <span className="todo-project-label">{projectName}</span>
+          {task.priority && (
+            <span
+              className={`priority-chip priority-${priorityTone(task.priority)}`}
+            >
+              {task.priority}
+            </span>
+          )}
           {overdue && <span className="todo-overdue-chip">Terlambat</span>}
         </div>
         <button
@@ -241,6 +259,15 @@ function TodoTaskCard({
 
       {task.description && (
         <p className="todo-card-desc">{task.description}</p>
+      )}
+
+      {checklist.length > 0 && (
+        <div className="todo-card-checklist" aria-label={`Sub-tugas ${checklistDone} dari ${checklist.length} selesai`}>
+          <WorkspaceIcon name="checklist" />
+          <span>
+            {checklistDone}/{checklist.length} sub-tugas
+          </span>
+        </div>
       )}
 
       <div className="todo-card-foot">
@@ -458,6 +485,22 @@ export default function TodoView(props: Props) {
           </div>
 
           <div className="todo-project-picker">
+            <WorkspaceIcon name="flag" />
+            <Select
+              value={props.priorityFilter}
+              aria-label="Filter prioritas"
+              onChange={(e) => props.onPriorityFilterChange(e.target.value)}
+            >
+              <option value="Semua">Semua Prioritas</option>
+              {TODO_PRIORITIES.map((p) => (
+                <option key={p} value={p}>
+                  Prioritas {p}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="todo-project-picker">
             <svg
               aria-hidden="true"
               className="todo-folder-icon"
@@ -656,6 +699,8 @@ export default function TodoView(props: Props) {
                   : task.status === "Selesai"
                     ? "done"
                     : "todo";
+              const checklist = task.checklist || [];
+              const checklistDone = checklist.filter((entry) => entry.done).length;
               return (
                 <article key={task.id} className="todo-list-row card">
                   <div className="todo-list-main">
@@ -666,6 +711,21 @@ export default function TodoView(props: Props) {
                       <span className="todo-project-label">
                         {props.projectName(task.projectId)}
                       </span>
+                      {task.priority && (
+                        <span
+                          className={`priority-chip priority-${priorityTone(task.priority)}`}
+                        >
+                          {task.priority}
+                        </span>
+                      )}
+                      {checklist.length > 0 && (
+                        <span className="todo-card-checklist-inline">
+                          <WorkspaceIcon name="checklist" />
+                          <span>
+                            {checklistDone}/{checklist.length}
+                          </span>
+                        </span>
+                      )}
                       {overdue && (
                         <span className="todo-overdue-chip">Terlambat</span>
                       )}

@@ -10,7 +10,7 @@ async function openLegacyWorkspace(page: Page) {
     }));
   });
   await page.goto("/workspace");
-  await expect(page.getByRole("heading", { name: "Proyek saya" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hari ini", exact: true })).toBeVisible();
 }
 
 test.describe("Notes", () => {

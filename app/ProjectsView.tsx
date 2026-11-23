@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import Select from "./Select";
 import WorkspaceIcon from "./WorkspaceIcon";
-import { TODO_STATUSES, type Item } from "./types";
+import { TODO_STATUSES, type Item, type Note, type TodoPriority } from "./types";
 
 type Props = {
   projects: Item[];
   visibleProjects: Item[];
   todos: Item[];
+  notes: Note[];
   statuses: string[];
   loading: boolean;
   search: string;
@@ -23,10 +24,19 @@ type Props = {
   onOpenKanban: (projectId: string) => void;
   onAddTaskForProject: (projectId: string) => void;
   onOpenTask: (task: Item) => void;
+  onOpenNote: (noteId: string) => void;
+  onAddNoteForProject: (projectId: string) => void;
   onChangeTaskStatus: (task: Item, status: string) => void;
   onNotice: (message: string) => void;
   onError: (message: string) => void;
 };
+
+function priorityTone(priority?: TodoPriority | null) {
+  if (priority === "Tinggi") return "high";
+  if (priority === "Sedang") return "medium";
+  if (priority === "Rendah") return "low";
+  return "";
+}
 
 type ProjectTone = "plan" | "progress" | "done" | "archived";
 
@@ -68,6 +78,7 @@ export default function ProjectsView({
   projects,
   visibleProjects,
   todos,
+  notes,
   statuses,
   loading,
   search,
@@ -82,6 +93,8 @@ export default function ProjectsView({
   onOpenKanban,
   onAddTaskForProject,
   onOpenTask,
+  onOpenNote,
+  onAddNoteForProject,
   onChangeTaskStatus,
   onNotice,
   onError,
@@ -143,11 +156,23 @@ export default function ProjectsView({
     return map;
   }, [todos]);
 
+  const noteCountByProject = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const note of notes) {
+      if (!note.projectId) continue;
+      map.set(note.projectId, (map.get(note.projectId) || 0) + 1);
+    }
+    return map;
+  }, [notes]);
+
   if (detail) {
     const tone = projectTone(detail.status);
     const relatedTodos = todos
       .filter((t) => t.projectId === detail.id)
       .sort((a, b) => (a.position || 0) - (b.position || 0));
+    const relatedNotes = notes
+      .filter((n) => n.projectId === detail.id)
+      .sort((a, b) => b.updatedAt - a.updatedAt);
     const doneTodos = relatedTodos.filter((t) => t.status === "Selesai").length;
     const progressPercent = relatedTodos.length
       ? Math.round((doneTodos / relatedTodos.length) * 100)
@@ -277,95 +302,166 @@ export default function ProjectsView({
         </section>
 
         <div className="detail-grid">
-          <section
-            className="card detail-section"
-            aria-labelledby="detail-todos-heading"
-          >
-            <div className="detail-section-head">
-              <div className="detail-section-title">
-                <h2 id="detail-todos-heading">To-do terkait</h2>
-                <span className="count">{relatedTodos.length}</span>
-              </div>
-              <button
-                type="button"
-                className="detail-inline-add"
-                onClick={() => onAddTaskForProject(detail.id)}
-              >
-                <WorkspaceIcon name="plus" />
-                <span>Tambah tugas</span>
-              </button>
-            </div>
-
-            {relatedTodos.length ? (
-              <div className="detail-todo-list">
-                {relatedTodos.map((task) => {
-                  const overdue = Boolean(
-                    task.date && task.status !== "Selesai" && task.date < today,
-                  );
-                  return (
-                    <article
-                      key={task.id}
-                      className="detail-todo-row"
-                      data-done={task.status === "Selesai"}
-                    >
-                      <div className="detail-todo-main">
-                        <div className="todo-card-tags">
-                          <span
-                            className={`todo-status-chip tone-${todoTone(task.status)}`}
-                          >
-                            {task.status}
-                          </span>
-                          {overdue && (
-                            <span className="todo-overdue-chip">Terlambat</span>
-                          )}
-                          {task.date && (
-                            <span
-                              className={
-                                "detail-todo-date " +
-                                (overdue ? "is-overdue" : "")
-                              }
-                            >
-                              {task.date}
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          className="detail-todo-title"
-                          onClick={() => onOpenTask(task)}
-                        >
-                          {task.title}
-                        </button>
-                      </div>
-                      <div className="detail-todo-controls">
-                        <Select
-                          aria-label={`Status ${task.title}`}
-                          value={task.status}
-                          onChange={(e) =>
-                            onChangeTaskStatus(task, e.target.value)
-                          }
-                        >
-                          {TODO_STATUSES.map((s) => (
-                            <option key={s}>{s}</option>
-                          ))}
-                        </Select>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="detail-empty-box">
-                <p>Belum ada to-do yang terhubung ke proyek ini.</p>
+          <div className="detail-main-column">
+            <section
+              className="card detail-section"
+              aria-labelledby="detail-todos-heading"
+            >
+              <div className="detail-section-head">
+                <div className="detail-section-title">
+                  <h2 id="detail-todos-heading">To-do terkait</h2>
+                  <span className="count">{relatedTodos.length}</span>
+                </div>
                 <button
                   type="button"
+                  className="detail-inline-add"
                   onClick={() => onAddTaskForProject(detail.id)}
                 >
-                  + Tambah tugas pertama
+                  <WorkspaceIcon name="plus" />
+                  <span>Tambah tugas</span>
                 </button>
               </div>
-            )}
-          </section>
+
+              {relatedTodos.length ? (
+                <div className="detail-todo-list">
+                  {relatedTodos.map((task) => {
+                    const overdue = Boolean(
+                      task.date && task.status !== "Selesai" && task.date < today,
+                    );
+                    const checklist = task.checklist || [];
+                    const checklistDone = checklist.filter((c) => c.done).length;
+                    return (
+                      <article
+                        key={task.id}
+                        className="detail-todo-row"
+                        data-done={task.status === "Selesai"}
+                      >
+                        <div className="detail-todo-main">
+                          <div className="todo-card-tags">
+                            <span
+                              className={`todo-status-chip tone-${todoTone(task.status)}`}
+                            >
+                              {task.status}
+                            </span>
+                            {task.priority && (
+                              <span
+                                className={`priority-chip priority-${priorityTone(task.priority)}`}
+                              >
+                                {task.priority}
+                              </span>
+                            )}
+                            {checklist.length > 0 && (
+                              <span className="todo-card-checklist-inline">
+                                <WorkspaceIcon name="checklist" />
+                                <span>
+                                  {checklistDone}/{checklist.length}
+                                </span>
+                              </span>
+                            )}
+                            {overdue && (
+                              <span className="todo-overdue-chip">Terlambat</span>
+                            )}
+                            {task.date && (
+                              <span
+                                className={
+                                  "detail-todo-date " +
+                                  (overdue ? "is-overdue" : "")
+                                }
+                              >
+                                {task.date}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className="detail-todo-title"
+                            onClick={() => onOpenTask(task)}
+                          >
+                            {task.title}
+                          </button>
+                        </div>
+                        <div className="detail-todo-controls">
+                          <Select
+                            aria-label={`Status ${task.title}`}
+                            value={task.status}
+                            onChange={(e) =>
+                              onChangeTaskStatus(task, e.target.value)
+                            }
+                          >
+                            {TODO_STATUSES.map((s) => (
+                              <option key={s}>{s}</option>
+                            ))}
+                          </Select>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="detail-empty-box">
+                  <p>Belum ada to-do yang terhubung ke proyek ini.</p>
+                  <button
+                    type="button"
+                    onClick={() => onAddTaskForProject(detail.id)}
+                  >
+                    + Tambah tugas pertama
+                  </button>
+                </div>
+              )}
+            </section>
+
+            <section
+              className="card detail-section"
+              aria-labelledby="detail-notes-heading"
+            >
+              <div className="detail-section-head">
+                <div className="detail-section-title">
+                  <WorkspaceIcon name="notes" />
+                  <h2 id="detail-notes-heading">Catatan proyek</h2>
+                  <span className="count">{relatedNotes.length}</span>
+                </div>
+                <button
+                  type="button"
+                  className="detail-inline-add"
+                  onClick={() => onAddNoteForProject(detail.id)}
+                >
+                  <WorkspaceIcon name="plus" />
+                  <span>Tambah catatan</span>
+                </button>
+              </div>
+
+              {relatedNotes.length ? (
+                <div className="detail-notes-list">
+                  {relatedNotes.map((note) => (
+                    <button
+                      key={note.id}
+                      type="button"
+                      className="detail-note-row"
+                      onClick={() => onOpenNote(note.id)}
+                    >
+                      <div className="detail-note-copy">
+                        <strong>{note.title}</strong>
+                        <p>{note.content || "Belum ada isi catatan."}</p>
+                      </div>
+                      <span className="detail-note-date">
+                        {formatDateLabel(note.updatedAt)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="detail-empty-box">
+                  <p>Belum ada catatan yang terhubung ke proyek ini.</p>
+                  <button
+                    type="button"
+                    onClick={() => onAddNoteForProject(detail.id)}
+                  >
+                    + Tambah catatan proyek
+                  </button>
+                </div>
+              )}
+            </section>
+          </div>
 
           <div className="detail-rail">
             <section
@@ -603,6 +699,7 @@ export default function ProjectsView({
               const tone = projectTone(item.status);
               const stats = todoStatsByProject.get(item.id);
               const linkCount = item.links?.length || 0;
+              const noteCount = noteCountByProject.get(item.id) || 0;
               return (
                 <article
                   key={item.id}
@@ -624,6 +721,12 @@ export default function ProjectsView({
                         <span className="project-meta-chip">
                           <WorkspaceIcon name="link" />
                           <span>{linkCount} Link</span>
+                        </span>
+                      )}
+                      {noteCount > 0 && (
+                        <span className="project-meta-chip">
+                          <WorkspaceIcon name="notes" />
+                          <span>{noteCount} Catatan</span>
                         </span>
                       )}
                     </div>

@@ -29,10 +29,12 @@ export function containDialogFocus(event: KeyboardEvent<HTMLDialogElement>) {
 export default function Modal({
   children,
   labelledBy,
+  className,
   onClose,
 }: {
   children: ReactNode;
   labelledBy: string;
+  className?: string;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -44,7 +46,7 @@ export default function Modal({
   return (
     <dialog
       ref={ref}
-      className="modal-shell"
+      className={className ? `modal-shell ${className}` : "modal-shell"}
       aria-labelledby={labelledBy}
       onKeyDown={containDialogFocus}
       onCancel={(event) => {

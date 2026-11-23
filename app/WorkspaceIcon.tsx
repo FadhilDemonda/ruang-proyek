@@ -1,4 +1,5 @@
 const paths = {
+  overview: "M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0Zm9-5v5l3 2",
   projects: "M3 7V5a1 1 0 0 1 1-1h5l3 3h8a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7ZM3 9h18",
   todos: "M4 4h16v16H4zM9 4v16m5-16v16",
   requests: "M3 14l3-9h12l3 9v5H3zM3 14h5l2 3h4l2-3h5",
@@ -19,6 +20,11 @@ const paths = {
   plus: "M12 5v14M5 12h14",
   trash: "M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6",
   calendar: "M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z",
+  flag: "M5 21V4m0 0h11l-2 4.5L16 13H5",
+  checklist: "M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2",
+  command: "M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3Z",
+  chevronLeft: "m15 18-6-6 6-6",
+  chevronRight: "m9 18 6-6-6-6",
 };
 
 export default function WorkspaceIcon({ name }: { name: keyof typeof paths }) {

@@ -22,13 +22,27 @@ import { type DragEndEvent } from "@dnd-kit/core";
 import TodoView from "./TodoView";
 import NotesView from "./NotesView";
 import ProjectsView from "./ProjectsView";
+import OverviewView from "./OverviewView";
+import CalendarView from "./CalendarView";
+import CommandPalette from "./CommandPalette";
 import ItemDetail from "./ItemDetail";
-import { TODO_STATUSES, type Item, type Note, type Section } from "./types";
+import {
+  TODO_PRIORITIES,
+  TODO_STATUSES,
+  type ChecklistItem,
+  type Item,
+  type Note,
+  type Section,
+  type TodoPriority,
+} from "./types";
 import { readWorkspaceRoute, workspaceHref, type WorkspaceSection } from "./workspaceRoute";
 
+const DATA_COLLECTIONS = ["projects", "todos", "requests", "notes"] as const;
 const labels: Record<WorkspaceSection, string> = {
+  overview: "Hari Ini",
   projects: "Proyek",
   todos: "To-do",
+  calendar: "Kalender",
   requests: "Request",
   notes: "Notes",
 };
@@ -47,6 +61,8 @@ const empty = (section: Section): Item => ({
   projectId: "",
   requester: "",
   links: [],
+  priority: null,
+  checklist: [],
 });
 type Data = Record<Section, Item[]> & { notes: Note[] };
 const localKey = "ruang-proyek-local-v1";
@@ -76,17 +92,20 @@ function Workspace() {
   const setNotice = useCallback((message: string) => setToast({ message }), []);
   const [search, setSearch] = useState(""),
     [filter, setFilter] = useState("Semua"),
+    [priorityFilter, setPriorityFilter] = useState("Semua"),
     [view, setView] = useState<"list" | "board">("board"),
     [mobileColumn, setMobileColumn] = useState("Belum Mulai"),
     [dark, setDark] = useState(false);
   const themeReady = useRef(false);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
   const [notesDirty, setNotesDirty] = useState(false);
   const [notesLeaveRequest, setNotesLeaveRequest] = useState(0);
   const [pendingNotesRoute, setPendingNotesRoute] = useState<{
     section: WorkspaceSection;
     projectId: string;
+    detailId?: string | null;
   } | null>(null);
   const [deleting, setDeleting] = useState<{
     section: Section;
@@ -95,11 +114,18 @@ function Workspace() {
   const [editing, setEditing] = useState<Item | null>(null),
     [editSection, setEditSection] = useState<Section>("projects"),
     [conversion, setConversion] = useState<Item | null>(null);
-  const detail = section !== "notes" && detailId
+  const isItemSection =
+    section === "projects" || section === "todos" || section === "requests";
+  const detail = isItemSection && detailId
     ? items[section].find((item) => item.id === detailId)
     : undefined;
   const selectedProject = items.projects.find((project) => project.id === projectId);
-  const projectFilter = loading || selectedProject ? projectId : "";
+  const projectFilter =
+    section === "notes" && projectId === "__none__"
+      ? "__none__"
+      : loading || selectedProject
+        ? projectId
+        : "";
   useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(null), 5000);
@@ -147,13 +173,12 @@ function Workspace() {
   useEffect(() => {
     if (!user || !db) return;
     setLoading(true);
-    const sections = Object.keys(labels) as WorkspaceSection[];
-    const pending = new Set(sections);
-    function loaded(section: WorkspaceSection) {
-      pending.delete(section);
+    const pending = new Set<string>(DATA_COLLECTIONS);
+    function loaded(col: string) {
+      pending.delete(col);
       if (pending.size === 0) setLoading(false);
     }
-    const unsubs = sections.map((s) =>
+    const unsubs = DATA_COLLECTIONS.map((s) =>
       onSnapshot(
         collection(db!, "users", user.uid, s),
         (snap) => {
@@ -182,14 +207,26 @@ function Workspace() {
       setDeleting(null);
       setConversion(null);
       setMobileMenu(false);
+      setCommandOpen(false);
       setPendingNotesRoute(null);
     }
     window.addEventListener("popstate", closeOverlays);
     return () => window.removeEventListener("popstate", closeOverlays);
   }, []);
   useEffect(() => {
+    function handleShortcut(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandOpen((open) => !open);
+      }
+    }
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+  useEffect(() => {
     setSearch("");
     setFilter("Semua");
+    setPriorityFilter("Semua");
   }, [section]);
   function saveLocal(next: Data) {
     localStorage.setItem(localKey, JSON.stringify(next));
@@ -199,7 +236,7 @@ function Workspace() {
   const notePath = () => collection(db!, "users", user!.uid, "notes");
   const visible = useMemo(
     () =>
-      (section === "notes" ? [] : items[section])
+      (!isItemSection ? [] : items[section])
         .filter(
           (i) =>
             (!search ||
@@ -207,6 +244,9 @@ function Workspace() {
                 .toLowerCase()
                 .includes(search.toLowerCase())) &&
             (filter === "Semua" || i.status === filter) &&
+            (section !== "todos" ||
+              priorityFilter === "Semua" ||
+              i.priority === priorityFilter) &&
             (section !== "todos" ||
               !projectFilter ||
               i.projectId === projectFilter),
@@ -216,12 +256,13 @@ function Workspace() {
             ? (a.position || 0) - (b.position || 0)
             : (b.updatedAt || 0) - (a.updatedAt || 0),
         ),
-    [items, section, search, filter, projectFilter],
+    [items, section, isItemSection, search, filter, priorityFilter, projectFilter],
   );
-  function navigate(s: WorkspaceSection, projectId = "") {
+  function navigate(s: WorkspaceSection, projectId = "", nextDetailId?: string | null) {
     setSearch("");
     setFilter("Semua");
-    const href = workspaceHref({ section: s, projectId });
+    setPriorityFilter("Semua");
+    const href = workspaceHref({ section: s, projectId, detailId: nextDetailId });
     if (`${location.pathname}${location.search}` !== href) {
       window.history.pushState(null, "", href);
       window.scrollTo(0, 0);
@@ -238,11 +279,26 @@ function Workspace() {
   function selectProject(id: string) {
     nav("todos", id);
   }
-  function openDetail(target: WorkspaceSection, id: string) {
+  function openDetail(target: WorkspaceSection, id: string, projectOverride?: string) {
+    if (section === "notes" && target !== "notes" && notesDirty) {
+      setPendingNotesRoute({
+        section: target,
+        projectId: projectOverride ?? "",
+        detailId: id,
+      });
+      setNotesLeaveRequest((value) => value + 1);
+      return;
+    }
+    const resolvedProject =
+      projectOverride !== undefined
+        ? projectOverride
+        : target === section
+          ? projectFilter
+          : "";
     const href = workspaceHref({
       section: target,
       detailId: id,
-      projectId: target === section ? projectFilter : "",
+      projectId: resolvedProject,
     });
     if (`${location.pathname}${location.search}` === href) return;
     const fromList = target === section && detailId == null;
@@ -268,11 +324,16 @@ function Workspace() {
       workspaceHref({ section: "notes", detailId: id }),
     );
   }
-  async function saveNote(draft: Pick<Note, "id" | "title" | "content">) {
+  async function saveNote(draft: Pick<Note, "id" | "title" | "content" | "projectId">) {
     if (!user) throw new Error("Sesi tidak tersedia.");
     const title = draft.title.trim();
     if (!title) throw new Error("Judul catatan wajib diisi.");
-    const payload = { title, content: draft.content, updatedAt: Date.now() };
+    const payload = {
+      title,
+      content: draft.content,
+      projectId: draft.projectId || "",
+      updatedAt: Date.now(),
+    };
     try {
       if (!db) {
         const note: Note = { id: draft.id || crypto.randomUUID(), ...payload };
@@ -309,15 +370,25 @@ function Workspace() {
       throw new Error(message);
     }
   }
-  function edit(s: Section, item?: Item, defaultProjectId?: string) {
+  function edit(
+    s: Section,
+    item?: Item,
+    defaults?: { projectId?: string; date?: string; status?: string },
+  ) {
     setEditSection(s);
     setEditing(
       item
-        ? { ...item }
+        ? { ...item, checklist: item.checklist ? item.checklist.map((c) => ({ ...c })) : [] }
         : {
             ...empty(s),
             ...(s === "todos"
-              ? { projectId: defaultProjectId ?? projectFilter }
+              ? {
+                  projectId:
+                    defaults?.projectId ??
+                    (section === "todos" ? projectFilter : ""),
+                  date: defaults?.date ?? "",
+                  status: defaults?.status ?? statuses[s][0],
+                }
               : {}),
           },
     );
@@ -330,18 +401,26 @@ function Workspace() {
     setError("");
     try {
       const { id, ...rest } = editing;
+      const cleanedChecklist: ChecklistItem[] = (rest.checklist || [])
+        .map((c) => ({ ...c, text: c.text.trim() }))
+        .filter((c) => c.text.length > 0);
       const payload = {
         ...rest,
         title: rest.title.trim(),
         updatedAt: Date.now(),
         ...(editSection === "todos"
           ? {
+              priority: rest.priority || null,
+              checklist: cleanedChecklist,
               completedAt:
                 rest.status === "Selesai"
                   ? rest.completedAt || Date.now()
                   : null,
             }
-          : {}),
+          : {
+              priority: null,
+              checklist: [],
+            }),
       };
       if (!payload.title) throw new Error("Judul wajib diisi.");
       for (const link of payload.links || []) {
@@ -427,6 +506,29 @@ function Workspace() {
       setError("Status gagal disimpan. Coba lagi.");
     }
   }
+  async function updateTaskChecklist(item: Item, checklist: ChecklistItem[]) {
+    if (!user) return;
+    setError("");
+    const changes = {
+      checklist,
+      updatedAt: Date.now(),
+    };
+    try {
+      if (!db) {
+        saveLocal({
+          ...items,
+          todos: items.todos.map((t) =>
+            t.id === item.id ? { ...t, ...changes } : t,
+          ),
+        });
+      } else {
+        await updateDoc(doc(path("todos"), item.id), changes);
+      }
+      setNotice("Checklist tersimpan.");
+    } catch {
+      setError("Checklist gagal disimpan. Coba lagi.");
+    }
+  }
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || !user) return;
@@ -437,7 +539,7 @@ function Workspace() {
     const status = target?.status || String(over.id).replace(/^column:/, "");
     if (!statuses.todos.includes(status)) return;
     if (
-      (search || projectFilter || filter !== "Semua") &&
+      (search || projectFilter || filter !== "Semua" || priorityFilter !== "Semua") &&
       task.status === status
     )
       return;
@@ -496,10 +598,14 @@ function Workspace() {
       if (!db) {
         const next = structuredClone(items);
         next[s] = next[s].filter((i) => i.id !== item.id);
-        if (s === "projects")
+        if (s === "projects") {
           next.todos = next.todos.map((t) =>
             t.projectId === item.id ? { ...t, projectId: "" } : t,
           );
+          next.notes = next.notes.map((n) =>
+            n.projectId === item.id ? { ...n, projectId: "" } : n,
+          );
+        }
         saveLocal(next);
       } else {
         if (
@@ -509,7 +615,25 @@ function Workspace() {
           throw new Error(
             "Lepaskan proyek dari to-do terkait sebelum menghapus proyek.",
           );
-        await deleteDoc(doc(path(s), item.id));
+        if (s === "projects") {
+          const linkedNotes = items.notes.filter((n) => n.projectId === item.id);
+          if (linkedNotes.length > 0) {
+            const { writeBatch } = await import("firebase/firestore");
+            const batch = writeBatch(db);
+            linkedNotes.forEach((note) =>
+              batch.update(doc(notePath(), note.id), {
+                projectId: "",
+                updatedAt: Date.now(),
+              }),
+            );
+            batch.delete(doc(path(s), item.id));
+            await batch.commit();
+          } else {
+            await deleteDoc(doc(path(s), item.id));
+          }
+        } else {
+          await deleteDoc(doc(path(s), item.id));
+        }
       }
       const current = readWorkspaceRoute(new URLSearchParams(location.search));
       if (current.section === s && current.detailId === item.id) closeDetail();
@@ -613,7 +737,7 @@ function Workspace() {
               <button
                 type="button"
                 className="crumb-link"
-                onClick={() => nav("projects")}
+                onClick={() => nav("overview")}
               >
                 Ruang kerja
               </button>
@@ -643,6 +767,17 @@ function Workspace() {
             </nav>
           </div>
           <div className="header-actions">
+            <button
+              type="button"
+              className="command-trigger"
+              aria-label="Cari dan perintah cepat (Ctrl+K)"
+              title="Pencarian cepat (Ctrl+K)"
+              onClick={() => setCommandOpen(true)}
+            >
+              <WorkspaceIcon name="search" />
+              <span className="command-trigger-label">Cari cepat…</span>
+              <kbd className="command-kbd">Ctrl K</kbd>
+            </button>
             <HeaderDate />
             <button
               type="button"
@@ -668,10 +803,20 @@ function Workspace() {
           )}
           <NotesView
               notes={items.notes}
+              projects={items.projects}
+              projectFilter={section === "notes" ? projectFilter : ""}
               active={section === "notes"}
               detailId={section === "notes" ? detailId : null}
               loading={loading}
               storageLabel={db ? "Tersinkron Firestore" : "Mode lokal (browser)"}
+              onProjectFilterChange={(nextProjectId) => {
+                window.history.replaceState(
+                  null,
+                  "",
+                  workspaceHref({ section: "notes", projectId: nextProjectId }),
+                );
+              }}
+              onOpenProject={(id) => openDetail("projects", id)}
               onOpen={(id) => openDetail("notes", id)}
               onBack={closeDetail}
               onCreated={savedNoteRoute}
@@ -683,13 +828,65 @@ function Workspace() {
                 setPendingNotesRoute(null);
                 if (discarded && pendingNotesRoute) {
                   setNotesDirty(false);
-                  navigate(pendingNotesRoute.section, pendingNotesRoute.projectId);
+                  navigate(
+                    pendingNotesRoute.section,
+                    pendingNotesRoute.projectId,
+                    pendingNotesRoute.detailId,
+                  );
                 }
               }}
               onNotice={setNotice}
               onError={setError}
           />
-          {section === "notes" ? null : detailId && !detail ? (
+          {section === "notes" ? null : section === "overview" ? (
+            <OverviewView
+              userName={user.displayName || user.email || "Pengguna"}
+              projects={items.projects}
+              todos={items.todos}
+              requests={items.requests}
+              notes={items.notes}
+              loading={loading}
+              onNavigate={nav}
+              onOpenProject={(id) => openDetail("projects", id)}
+              onOpenTask={(task) => openDetail("todos", task.id)}
+              onOpenRequest={(request) => openDetail("requests", request.id)}
+              onOpenNote={(id) => openDetail("notes", id)}
+              onChangeTaskStatus={changeStatus}
+              onConvertRequest={convert}
+              onAddTaskToday={(todayDate) => {
+                setConversion(null);
+                edit("todos", undefined, { date: todayDate });
+              }}
+              onAddProject={() => {
+                setConversion(null);
+                edit("projects");
+              }}
+              onAddNote={() => openDetail("notes", "", "")}
+              projectName={projectName}
+            />
+          ) : section === "calendar" ? (
+            <CalendarView
+              projects={items.projects}
+              todos={items.todos}
+              requests={items.requests}
+              projectFilter={projectFilter}
+              loading={loading}
+              onProjectFilterChange={(nextProjectId) => {
+                window.history.replaceState(
+                  null,
+                  "",
+                  workspaceHref({ section: "calendar", projectId: nextProjectId }),
+                );
+              }}
+              onOpenItem={(kind, id) => openDetail(kind, id)}
+              onAddTaskOnDate={(date) => {
+                setConversion(null);
+                edit("todos", undefined, { date, projectId: projectFilter });
+              }}
+              onChangeTaskStatus={changeStatus}
+              projectName={projectName}
+            />
+          ) : detailId && !detail ? (
             <div className="project-detail-page">
               <div className="detail-nav">
                 <button type="button" className="back-button" onClick={closeDetail}>
@@ -703,6 +900,7 @@ function Workspace() {
               projects={items.projects}
               visibleProjects={visible}
               todos={items.todos}
+              notes={items.notes}
               statuses={statuses.projects}
               loading={loading}
               search={search}
@@ -721,16 +919,18 @@ function Workspace() {
               }}
               onDeleteProject={(project) => remove("projects", project)}
               onOpenKanban={selectProject}
-              onAddTaskForProject={(projectId) => {
+              onAddTaskForProject={(pid) => {
                 setConversion(null);
-                edit("todos", undefined, projectId);
+                edit("todos", undefined, { projectId: pid });
               }}
               onOpenTask={(task) => openDetail("todos", task.id)}
+              onOpenNote={(id) => openDetail("notes", id)}
+              onAddNoteForProject={(pid) => openDetail("notes", "", pid)}
               onChangeTaskStatus={changeStatus}
               onNotice={setNotice}
               onError={setError}
             />
-          ) : detail ? (
+          ) : detail && (section === "todos" || section === "requests") ? (
             <ItemDetail
               section={section}
               item={detail}
@@ -739,6 +939,11 @@ function Workspace() {
               onEdit={() => edit(section, detail)}
               onDelete={() => remove(section, detail)}
               onConvert={(target) => convert(detail, target)}
+              onUpdateChecklist={
+                section === "todos"
+                  ? (checklist) => updateTaskChecklist(detail, checklist)
+                  : undefined
+              }
             />
           ) : section === "todos" ? (
             <TodoView
@@ -750,6 +955,7 @@ function Workspace() {
               loading={loading}
               search={search}
               filter={filter}
+              priorityFilter={priorityFilter}
               projectFilter={projectFilter}
               view={view}
               mobileColumn={mobileColumn}
@@ -758,8 +964,9 @@ function Workspace() {
                 setFilter(status);
                 if (status !== "Semua") setMobileColumn(status);
               }}
-              onProjectFilterChange={(projectId) => {
-                window.history.replaceState(null, "", workspaceHref({ section, projectId }));
+              onPriorityFilterChange={setPriorityFilter}
+              onProjectFilterChange={(pid) => {
+                window.history.replaceState(null, "", workspaceHref({ section, projectId: pid }));
               }}
               onViewChange={(nextView) => {
                 setView(nextView);
@@ -771,17 +978,10 @@ function Workspace() {
               }}
               onAddTask={(status) => {
                 setConversion(null);
-                if (status) {
-                  setEditSection("todos");
-                  setEditing({
-                    ...empty("todos"),
-                    status,
-                    projectId: projectFilter,
-                  });
-                  setError("");
-                } else {
-                  edit("todos");
-                }
+                edit("todos", undefined, {
+                  status,
+                  projectId: projectFilter,
+                });
               }}
               onEditTask={(task) => edit("todos", task)}
               onOpenTask={(task) => openDetail("todos", task.id)}
@@ -929,24 +1129,53 @@ function Workspace() {
           )}
         </div>
       </main>
-      <nav className="bottom">
+      <nav className="bottom" aria-label="Menu bawah">
         {(Object.keys(labels) as WorkspaceSection[]).map((s) => (
           <button
             key={s}
+            type="button"
             className={s === section ? "active" : ""}
             onClick={() => nav(s)}
           >
-            {labels[s]}
+            <WorkspaceIcon name={s} />
+            <span>{labels[s]}</span>
           </button>
         ))}
       </nav>
+      {commandOpen && (
+        <CommandPalette
+          projects={items.projects}
+          todos={items.todos}
+          requests={items.requests}
+          notes={items.notes}
+          dark={dark}
+          onClose={() => setCommandOpen(false)}
+          onNavigate={nav}
+          onOpenDetail={(target, id) => openDetail(target, id)}
+          onAddProject={() => {
+            setConversion(null);
+            edit("projects");
+          }}
+          onAddTask={() => {
+            setConversion(null);
+            edit("todos");
+          }}
+          onAddRequest={() => {
+            setConversion(null);
+            edit("requests");
+          }}
+          onAddNote={() => openDetail("notes", "", "")}
+          onToggleTheme={() => setDark((prev) => !prev)}
+          projectName={projectName}
+        />
+      )}
       {deleting && (
         <Modal labelledBy="delete-heading" onClose={() => setDeleting(null)}>
           <div className="dialog card">
             <h2 id="delete-heading">Hapus {deleting.item.title}?</h2>
             <p>
               {deleting.section === "projects"
-                ? "To-do terkait tetap tersimpan sebagai tugas mandiri."
+                ? "To-do dan catatan terkait tetap tersimpan sebagai item mandiri."
                 : "Tindakan ini tidak dapat dibatalkan."}
             </p>
             <div className="row">
@@ -1068,23 +1297,99 @@ function Workspace() {
               </label>
             )}
             {editSection === "todos" && (
-              <label>
-                Proyek
-                <Select
-                  aria-label="Proyek tugas"
-                  value={editing.projectId || ""}
-                  onChange={(e) =>
-                    setEditing({ ...editing, projectId: e.target.value })
-                  }
-                >
-                  <option value="">Tugas mandiri</option>
-                  {items.projects.map((p) => (
-                    <option value={p.id} key={p.id}>
-                      {p.title}
-                    </option>
+              <>
+                <label>
+                  Proyek
+                  <Select
+                    aria-label="Proyek tugas"
+                    value={editing.projectId || ""}
+                    onChange={(e) =>
+                      setEditing({ ...editing, projectId: e.target.value })
+                    }
+                  >
+                    <option value="">Tugas mandiri</option>
+                    {items.projects.map((p) => (
+                      <option value={p.id} key={p.id}>
+                        {p.title}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label>
+                  Prioritas
+                  <Select
+                    aria-label="Prioritas tugas"
+                    value={editing.priority || ""}
+                    onChange={(e) =>
+                      setEditing({
+                        ...editing,
+                        priority: (e.target.value || null) as TodoPriority | null,
+                      })
+                    }
+                  >
+                    <option value="">Tanpa prioritas</option>
+                    {TODO_PRIORITIES.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <div className="modal-checklist">
+                  <span className="modal-checklist-heading">Sub-tugas (Checklist)</span>
+                  {(editing.checklist || []).map((entry, idx) => (
+                    <div key={entry.id} className="modal-checklist-row">
+                      <input
+                        type="checkbox"
+                        className="modal-checklist-check"
+                        aria-label={`Tandai sub-tugas ${idx + 1} selesai`}
+                        checked={entry.done}
+                        onChange={(e) => {
+                          const checklist = [...(editing.checklist || [])];
+                          checklist[idx] = { ...entry, done: e.target.checked };
+                          setEditing({ ...editing, checklist });
+                        }}
+                      />
+                      <input
+                        aria-label={`Sub-tugas ${idx + 1}`}
+                        placeholder="Langkah sub-tugas…"
+                        value={entry.text}
+                        onChange={(e) => {
+                          const checklist = [...(editing.checklist || [])];
+                          checklist[idx] = { ...entry, text: e.target.value };
+                          setEditing({ ...editing, checklist });
+                        }}
+                      />
+                      <button
+                        type="button"
+                        aria-label={`Hapus sub-tugas ${idx + 1}`}
+                        onClick={() =>
+                          setEditing({
+                            ...editing,
+                            checklist: (editing.checklist || []).filter((_, j) => j !== idx),
+                          })
+                        }
+                      >
+                        Hapus
+                      </button>
+                    </div>
                   ))}
-                </Select>
-              </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditing({
+                        ...editing,
+                        checklist: [
+                          ...(editing.checklist || []),
+                          { id: crypto.randomUUID(), text: "", done: false },
+                        ],
+                      })
+                    }
+                  >
+                    + Tambah sub-tugas
+                  </button>
+                </div>
+              </>
             )}
             {editSection === "projects" && (
               <>

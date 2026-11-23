@@ -34,11 +34,15 @@ export default function Select({
   children,
   value,
   onChange,
+  id: triggerId,
+  disabled,
   "aria-label": ariaLabel,
 }: {
   children: ReactNode;
   value: string;
   onChange: (event: ChangeEvent<HTMLSelectElement>) => void;
+  id?: string;
+  disabled?: boolean;
   "aria-label"?: string;
 }) {
   const options: Option[] = [];
@@ -225,7 +229,9 @@ export default function Select({
     <div className="select-wrap" ref={root}>
       <button
         ref={triggerRef}
+        id={triggerId}
         type="button"
+        disabled={disabled}
         className="select-trigger"
         role="combobox"
         aria-label={ariaLabel}
@@ -235,6 +241,7 @@ export default function Select({
         aria-haspopup="listbox"
         onKeyDown={key}
         onClick={() => {
+          if (disabled) return;
           if (open) setOpen(false);
           else openMenu();
         }}

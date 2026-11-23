@@ -1,10 +1,21 @@
 export type Section = "projects" | "todos" | "requests";
 
+export const TODO_STATUSES = ["Belum Mulai", "Dikerjakan", "Selesai"] as const;
+export const TODO_PRIORITIES = ["Tinggi", "Sedang", "Rendah"] as const;
+export type TodoPriority = (typeof TODO_PRIORITIES)[number];
+
+export type ChecklistItem = {
+  id: string;
+  text: string;
+  done: boolean;
+};
+
 export type Note = {
   id: string;
   title: string;
   content: string;
   updatedAt: number;
+  projectId?: string;
 };
 
 export type Item = {
@@ -24,6 +35,6 @@ export type Item = {
   convertedType?: string;
   convertedId?: string;
   completedAt?: number | null;
+  priority?: TodoPriority | null;
+  checklist?: ChecklistItem[];
 };
-
-export const TODO_STATUSES = ["Belum Mulai", "Dikerjakan", "Selesai"] as const;

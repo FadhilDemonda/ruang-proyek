@@ -7,12 +7,12 @@ import Link from "next/link";
 import WorkspaceIcon from "./WorkspaceIcon";
 import Logo from "./Logo";
 import { containDialogFocus } from "./Modal";
+import type { WorkspaceSection } from "./workspaceRoute";
 
-type Section = "projects" | "todos" | "requests" | "notes";
 type Props = {
   projects: { id: string; title: string }[];
   loading: boolean;
-  section: Section;
+  section: WorkspaceSection;
   projectId: string;
   detailId?: string | null;
   collapsed: boolean;
@@ -22,7 +22,7 @@ type Props = {
   email: string;
   uid: string;
   onNotice: (message: string) => void;
-  onNavigate: (section: Section) => void;
+  onNavigate: (section: WorkspaceSection) => void;
   onProject: (id: string) => void;
   onAddProject: () => void;
   onToggle: () => void;
@@ -31,9 +31,11 @@ type Props = {
   onSignOut?: () => void;
 };
 
-const destinations: { section: Section; label: string }[] = [
+const destinations: { section: WorkspaceSection; label: string }[] = [
+  { section: "overview", label: "Hari Ini" },
   { section: "projects", label: "Proyek" },
   { section: "todos", label: "To-do" },
+  { section: "calendar", label: "Kalender" },
   { section: "requests", label: "Request" },
   { section: "notes", label: "Notes" },
 ];
