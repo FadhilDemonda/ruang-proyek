@@ -12,7 +12,7 @@ import {
   collection,
   doc,
   onSnapshot,
-  addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   runTransaction,
@@ -234,6 +234,16 @@ function Workspace() {
   }
   const path = (s: Section) => collection(db!, "users", user!.uid, s);
   const notePath = () => collection(db!, "users", user!.uid, "notes");
+  async function commitWrite(write: Promise<unknown>, fallbackError: string) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      void write.catch((cause) =>
+        setError(cause instanceof Error ? cause.message : fallbackError),
+      );
+      return false;
+    }
+    await write;
+    return true;
+  }
   const visible = useMemo(
     () =>
       (!isItemSection ? [] : items[section])
@@ -347,11 +357,18 @@ function Workspace() {
         return note;
       }
       if (draft.id) {
-        await updateDoc(doc(notePath(), draft.id), payload);
+        await commitWrite(
+          updateDoc(doc(notePath(), draft.id), payload),
+          "Catatan gagal disinkronkan.",
+        );
         return { id: draft.id, ...payload };
       }
-      const created = await addDoc(notePath(), payload);
-      return { id: created.id, ...payload };
+      const createdRef = doc(notePath());
+      await commitWrite(
+        setDoc(createdRef, payload),
+        "Catatan gagal disinkronkan.",
+      );
+      return { id: createdRef.id, ...payload };
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Catatan gagal disimpan.";
       setError(message);
@@ -360,10 +377,16 @@ function Workspace() {
   }
   async function deleteNote(note: Note) {
     try {
+      let synced = true;
       if (!db) {
         saveLocal({ ...items, notes: items.notes.filter((item) => item.id !== note.id) });
-      } else await deleteDoc(doc(notePath(), note.id));
-      setNotice("Catatan dihapus.");
+      } else {
+        synced = await commitWrite(
+          deleteDoc(doc(notePath(), note.id)),
+          "Catatan gagal dihapus dari server.",
+        );
+      }
+      setNotice(synced ? "Catatan dihapus." : "Catatan dihapus offline · Akan disinkronkan saat online.");
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Catatan gagal dihapus.";
       setError(message);
@@ -428,6 +451,7 @@ function Workspace() {
         if (!["http:", "https:"].includes(u.protocol) || !link.label.trim())
           throw new Error("Link memerlukan nama dan URL HTTP/HTTPS.");
       }
+      let synced = true;
       if (!db) {
         const next = structuredClone(items);
         if (conversion) {
@@ -455,6 +479,9 @@ function Workspace() {
           });
         saveLocal(next);
       } else if (conversion) {
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          throw new Error("Konversi request membutuhkan koneksi internet saat menggunakan akun Firebase.");
+        }
         await runTransaction(db, async (tx) => {
           const source = doc(db!, "users", user.uid, "requests", conversion.id);
           const snap = await tx.get(source);
@@ -469,12 +496,26 @@ function Workspace() {
           });
         });
       } else if (id) {
-        await updateDoc(doc(path(editSection), id), payload);
-      } else
-        await addDoc(path(editSection), { ...payload, position: Date.now() });
+        synced = await commitWrite(
+          updateDoc(doc(path(editSection), id), payload),
+          "Perubahan gagal disinkronkan.",
+        );
+      } else {
+        const createdRef = doc(path(editSection));
+        synced = await commitWrite(
+          setDoc(createdRef, { ...payload, position: Date.now() }),
+          "Data gagal disinkronkan.",
+        );
+      }
       setConversion(null);
       setEditing(null);
-      setNotice(id ? "Perubahan tersimpan." : `${labels[editSection]} dibuat.`);
+      setNotice(
+        synced
+          ? id
+            ? "Perubahan tersimpan."
+            : `${labels[editSection]} dibuat.`
+          : "Tersimpan offline · Akan diunggah saat online.",
+      );
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Gagal menyimpan. Coba lagi.",
@@ -493,6 +534,7 @@ function Workspace() {
       updatedAt: Date.now(),
     };
     try {
+      let synced = true;
       if (!db)
         saveLocal({
           ...items,
@@ -500,8 +542,17 @@ function Workspace() {
             t.id === item.id ? { ...t, ...changes } : t,
           ),
         });
-      else await updateDoc(doc(path("todos"), item.id), changes);
-      setNotice("Status to-do tersimpan.");
+      else {
+        synced = await commitWrite(
+          updateDoc(doc(path("todos"), item.id), changes),
+          "Status gagal disinkronkan.",
+        );
+      }
+      setNotice(
+        synced
+          ? "Status to-do tersimpan."
+          : "Status tersimpan offline · Akan diunggah saat online.",
+      );
     } catch {
       setError("Status gagal disimpan. Coba lagi.");
     }
@@ -514,6 +565,7 @@ function Workspace() {
       updatedAt: Date.now(),
     };
     try {
+      let synced = true;
       if (!db) {
         saveLocal({
           ...items,
@@ -522,9 +574,16 @@ function Workspace() {
           ),
         });
       } else {
-        await updateDoc(doc(path("todos"), item.id), changes);
+        synced = await commitWrite(
+          updateDoc(doc(path("todos"), item.id), changes),
+          "Checklist gagal disinkronkan.",
+        );
       }
-      setNotice("Checklist tersimpan.");
+      setNotice(
+        synced
+          ? "Checklist tersimpan."
+          : "Checklist tersimpan offline · Akan diunggah saat online.",
+      );
     } catch {
       setError("Checklist gagal disimpan. Coba lagi.");
     }
@@ -558,6 +617,7 @@ function Workspace() {
       completedAt: status === "Selesai" ? task.completedAt || Date.now() : null,
     });
     try {
+      let synced = true;
       if (!db) {
         const replacements = new Map(
           ordered.map((t, i) => [
@@ -580,9 +640,16 @@ function Workspace() {
             updatedAt: Date.now(),
           }),
         );
-        await batch.commit();
+        synced = await commitWrite(
+          batch.commit(),
+          "Urutan tugas gagal disinkronkan.",
+        );
       }
-      setNotice("Perubahan tersimpan.");
+      setNotice(
+        synced
+          ? "Perubahan tersimpan."
+          : "Tersimpan offline · Akan diunggah saat online.",
+      );
     } catch {
       setError("Gagal memindahkan tugas. Coba lagi.");
     }
@@ -595,6 +662,7 @@ function Workspace() {
     const { section: s, item } = deleting;
     setDeleting(null);
     try {
+      let synced = true;
       if (!db) {
         const next = structuredClone(items);
         next[s] = next[s].filter((i) => i.id !== item.id);
@@ -627,17 +695,30 @@ function Workspace() {
               }),
             );
             batch.delete(doc(path(s), item.id));
-            await batch.commit();
+            synced = await commitWrite(
+              batch.commit(),
+              "Penghapusan proyek gagal disinkronkan.",
+            );
           } else {
-            await deleteDoc(doc(path(s), item.id));
+            synced = await commitWrite(
+              deleteDoc(doc(path(s), item.id)),
+              "Penghapusan proyek gagal disinkronkan.",
+            );
           }
         } else {
-          await deleteDoc(doc(path(s), item.id));
+          synced = await commitWrite(
+            deleteDoc(doc(path(s), item.id)),
+            "Penghapusan gagal disinkronkan.",
+          );
         }
       }
       const current = readWorkspaceRoute(new URLSearchParams(location.search));
       if (current.section === s && current.detailId === item.id) closeDetail();
-      setNotice(`${labels[s]} dihapus.`);
+      setNotice(
+        synced
+          ? `${labels[s]} dihapus.`
+          : `${labels[s]} dihapus offline · Akan disinkronkan saat online.`,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menghapus.");
     }
