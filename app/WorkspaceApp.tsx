@@ -840,7 +840,6 @@ function Workspace() {
           />
           {section === "notes" ? null : section === "overview" ? (
             <OverviewView
-              userName={user.displayName || user.email || "Pengguna"}
               projects={items.projects}
               todos={items.todos}
               requests={items.requests}

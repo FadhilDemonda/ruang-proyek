@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Produktivitas Harian & Integrasi Antar-Modul", () => {
-  test("opens on Hari Ini (Overview) by default with accurate summaries and quick actions", async ({ page }, testInfo) => {
+  test("opens Hari Ini with tasks first and secondary information on demand", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
     const today = new Date().toLocaleDateString("en-CA");
     const yesterdayDate = new Date();
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
@@ -77,10 +80,121 @@ test.describe("Produktivitas Harian & Integrasi Antar-Modul", () => {
     await expect(page.getByText("2", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Perbaiki bug pembayaran", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Siapkan catatan rilis", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Peluncuran Produk", exact: true }).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: "Tambahkan ekspor CSV", exact: true })).toBeVisible();
-    await expect(page.getByText("Ringkasan Rapat Rilis")).toBeVisible();
-    await page.screenshot({ path: testInfo.outputPath("overview-hari-ini.png") });
+    const overview = page.locator(".overview-page");
+    await expect(overview.getByRole("button", { name: "Tambahkan ekspor CSV", exact: true })).not.toBeVisible();
+    await expect(overview.getByText("Ringkasan Rapat Rilis")).not.toBeVisible();
+
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const theme of ["light", "dark"]) {
+        if (await page.locator("html").getAttribute("data-theme") !== theme) {
+          await page.getByRole("button", { name: theme === "dark" ? "Aktifkan mode gelap" : "Aktifkan mode terang", exact: true }).click();
+        }
+        await expect(overview).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({ path: `.impeccable/review/overview-${width}-${theme}.png`, fullPage: true, animations: "disabled" });
+      }
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.getByRole("button", { name: "Aktifkan mode terang", exact: true }).click();
+
+    await overview.getByRole("button", { name: "Tambah tugas", exact: true }).click();
+    const taskDialog = page.getByRole("dialog", { name: "Tambah To-do" });
+    await expect(taskDialog.getByLabel("Tenggat")).toHaveValue(today);
+    await page.keyboard.press("Escape");
+    await expect(taskDialog).not.toBeVisible();
+
+    const projects = overview.locator("details").filter({ has: page.locator("summary", { hasText: "Proyek aktif" }) });
+    await projects.locator("summary").focus();
+    await page.keyboard.press("Enter");
+    await expect(projects.getByRole("button", { name: "Peluncuran Produk", exact: true })).toBeVisible();
+    await projects.getByRole("button", { name: "Tambah proyek", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Tambah Proyek" })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    const requests = overview.locator("details").filter({ has: page.locator("summary", { hasText: "Request baru" }) });
+    await requests.locator("summary").click();
+    for (const target of ["proyek", "to-do"]) {
+      await requests.getByRole("button", { name: `Jadikan ${target}`, exact: true }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog.getByLabel("Judul", { exact: true })).toHaveValue("Tambahkan ekspor CSV");
+      await page.keyboard.press("Escape");
+    }
+
+    await overview.locator("summary", { hasText: "Catatan terakhir" }).click();
+    await expect(overview.getByRole("button", { name: "Ringkasan Rapat Rilis", exact: true })).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: ".impeccable/review/overview-expanded.png", fullPage: true, animations: "disabled" });
+
+    await overview.getByRole("combobox", { name: "Status Perbaiki bug pembayaran" }).click();
+    await page.getByRole("option", { name: "Selesai", exact: true }).click();
+    await expect(overview.getByRole("button", { name: "Perbaiki bug pembayaran", exact: true })).not.toBeVisible();
+    await expect(page.locator(".workspace-toast")).toContainText("Status to-do tersimpan.");
+
+    const destinations = [
+      ["Kalender", null, /section=calendar/],
+      ["Semua to-do", null, /section=todos/],
+      ["Siapkan catatan rilis", null, /section=todos&detail=t2/],
+      ["Peluncuran Produk", "Proyek aktif", /section=projects&detail=p1/],
+      ["Kanban", "Proyek aktif", /section=todos&project=p1/],
+      ["Semua proyek", "Proyek aktif", /section=projects/],
+      ["Tambahkan ekspor CSV", "Request baru", /section=requests&detail=r1/],
+      ["Semua request", "Request baru", /section=requests/],
+      ["Ringkasan Rapat Rilis", "Catatan terakhir", /section=notes&detail=n1/],
+      ["Buat catatan", "Catatan terakhir", /section=notes&detail=/],
+      ["Semua notes", "Catatan terakhir", /section=notes/],
+    ] as const;
+    for (const [label, disclosure, destination] of destinations) {
+      if (disclosure) {
+        const panel = overview.locator("details").filter({ has: page.locator("summary", { hasText: disclosure }) });
+        if (await panel.getAttribute("open") === null) await panel.locator("summary").click();
+      }
+      await overview.getByRole("button", { name: label, exact: true }).click();
+      await expect(page).toHaveURL(destination);
+      await page.goBack();
+      await expect(overview).toBeVisible();
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test("keeps the focus list bounded without hiding remaining tasks", async ({ page }) => {
+    const today = new Date().toLocaleDateString("en-CA");
+    await page.addInitScript((date) => {
+      localStorage.setItem("ruang-proyek-local-v1", JSON.stringify({
+        projects: [], notes: [], requests: [],
+        todos: [
+          ...Array.from({ length: 7 }, (_, index) => ({ id: `t${index}`, title: `Tugas ${index}`, date, status: "Belum Mulai" })),
+          { id: "done", title: "Sudah selesai", date, status: "Selesai" },
+          { id: "future", title: "Nanti saja", date: "2099-12-31", status: "Belum Mulai" },
+        ],
+      }));
+    }, today);
+    await page.goto("/workspace");
+    await expect(page.locator(".overview-task")).toHaveCount(5);
+    const more = page.getByRole("button", { name: "Lihat 2 tugas lainnya" });
+    await more.click();
+    await expect(page.locator(".overview-task")).toHaveCount(7);
+    await page.getByRole("button", { name: "Tampilkan lebih sedikit" }).click();
+    await expect(page.locator(".overview-task")).toHaveCount(5);
+    await expect(page.getByText("Sudah selesai", { exact: true })).not.toBeVisible();
+    await expect(page.getByText("Nanti saja", { exact: true })).not.toBeVisible();
+  });
+
+  test("keeps empty and unreadable workspaces usable on a narrow screen", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.addInitScript(() => localStorage.setItem("ruang-proyek-local-v1", "invalid-json"));
+    await page.goto("/workspace");
+    await expect(page.locator(".content").getByRole("alert")).toContainText("Data lokal tidak dapat dibaca.");
+    await expect(page.getByRole("heading", { name: "Hari ini masih lapang." })).toBeVisible();
+    for (const summary of await page.locator(".overview-disclosure summary").all()) await summary.click();
+    await expect(page.getByText("Belum ada proyek aktif.")).toBeVisible();
+    await expect(page.getByText("Tidak ada request baru.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Belum ada catatan.", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: ".impeccable/review/overview-empty-error.png", fullPage: true, animations: "disabled" });
   });
 
   test("supports To-do priority filtering and interactive checklist sub-tasks", async ({ page }, testInfo) => {
