@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import Select from "./Select";
 import WorkspaceIcon from "./WorkspaceIcon";
-import { TODO_STATUSES, type Item, type Note, type TodoPriority } from "./types";
+import { TODO_STATUSES, todoTone, type Item, type Note, type TodoPriority } from "./types";
 import type { WorkspaceSection } from "./workspaceRoute";
 
 type Props = {
@@ -37,12 +37,6 @@ function priorityTone(priority?: TodoPriority | null) {
   if (priority === "Sedang") return "medium";
   if (priority === "Rendah") return "low";
   return "";
-}
-
-function todoTone(status: string) {
-  if (status === "Dikerjakan") return "progress";
-  if (status === "Selesai") return "done";
-  return "todo";
 }
 
 function formatLongDate(date: Date) {
@@ -113,10 +107,15 @@ export default function OverviewView({
     [todos],
   );
 
+  const reviewTodos = useMemo(
+    () => todos.filter((task) => task.status === "On Review"),
+    [todos],
+  );
+
   const focusTodos = useMemo(() => {
     const seen = new Set<string>();
     const combined: Item[] = [];
-    for (const task of [...overdueTodos, ...dueTodayTodos, ...workingTodos]) {
+    for (const task of [...overdueTodos, ...dueTodayTodos, ...workingTodos, ...reviewTodos]) {
       if (seen.has(task.id)) continue;
       seen.add(task.id);
       combined.push(task);
@@ -136,7 +135,7 @@ export default function OverviewView({
 
       return (a.date || "9999-99-99").localeCompare(b.date || "9999-99-99");
     });
-  }, [overdueTodos, dueTodayTodos, workingTodos, today]);
+  }, [overdueTodos, dueTodayTodos, workingTodos, reviewTodos, today]);
 
   const activeProjects = useMemo(() => {
     const working = projects.filter((p) => p.status === "Dikerjakan");
@@ -224,7 +223,11 @@ export default function OverviewView({
           <dt>TUGAS DIKERJAKAN</dt>
           <dd>
             <strong>{workingTodos.length}</strong>
-            <small>dari {todos.length} total to-do</small>
+            <small>
+              {reviewTodos.length > 0
+                ? `${reviewTodos.length} on review · ${todos.length} total`
+                : `dari ${todos.length} total to-do`}
+            </small>
           </dd>
         </div>
         <div className="overview-kpi card">

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Select from "./Select";
 import WorkspaceIcon from "./WorkspaceIcon";
-import { TODO_STATUSES, type Item, type Note, type TodoPriority } from "./types";
+import { TODO_STATUSES, todoTone, type Item, type Note, type TodoPriority } from "./types";
 
 type Props = {
   projects: Item[];
@@ -49,12 +49,6 @@ const TONE_BY_STATUS: Record<string, ProjectTone> = {
 
 function projectTone(status: string): ProjectTone {
   return TONE_BY_STATUS[status] ?? "plan";
-}
-
-function todoTone(status: string) {
-  if (status === "Dikerjakan") return "progress";
-  if (status === "Selesai") return "done";
-  return "todo";
 }
 
 function formatDateLabel(timestamp?: number) {

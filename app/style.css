@@ -286,6 +286,8 @@ select option {
   --tone-todo: #667549;
   --tone-progress: #b97714;
   --tone-progress-text: #855106;
+  --tone-review: #4b6e78;
+  --tone-review-text: #2e4d57;
   --tone-done: #3c6b3d;
   --tone-done-text: #2a522c;
   --danger-text: #a52220;
@@ -297,6 +299,9 @@ select option {
   --status-work-bg: #fdf3e4;
   --status-work-text: #855106;
   --status-work-accent: #b97714;
+  --status-review-bg: #e6eff1;
+  --status-review-text: #2e4d57;
+  --status-review-accent: #4b6e78;
   --status-done-bg: #e7f0e2;
   --status-done-text: #2a5230;
   --status-done-accent: #3f6f44;
@@ -318,6 +323,8 @@ select option {
   --tone-todo: #c5d89d;
   --tone-progress: #eab354;
   --tone-progress-text: #f0c46c;
+  --tone-review: #8dbdc9;
+  --tone-review-text: #a9d3de;
   --tone-done: #92c78d;
   --tone-done-text: #b2dfa9;
   --danger-text: #f4a3a0;
@@ -329,6 +336,9 @@ select option {
   --status-work-bg: #3b2e19;
   --status-work-text: #f3ca7c;
   --status-work-accent: #eab354;
+  --status-review-bg: #1e2e33;
+  --status-review-text: #b7dde6;
+  --status-review-accent: #8dbdc9;
   --status-done-bg: #233322;
   --status-done-text: #b0e0aa;
   --status-done-accent: #92c78d;
@@ -1164,6 +1174,12 @@ body:has(dialog[open]) {
 .todo-stat dd.tone-progress .todo-stat-dot {
   background: var(--tone-progress);
 }
+.todo-stat dd.tone-review {
+  color: var(--tone-review-text);
+}
+.todo-stat dd.tone-review .todo-stat-dot {
+  background: var(--tone-review);
+}
 .todo-stat dd.tone-done {
   color: var(--tone-done-text);
 }
@@ -1332,8 +1348,8 @@ body:has(dialog[open]) {
 }
 .todo-board {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
   align-items: start;
 }
 .todo-column {
@@ -1368,6 +1384,9 @@ body:has(dialog[open]) {
 }
 .todo-column-title.tone-progress {
   color: var(--tone-progress-text);
+}
+.todo-column-title.tone-review {
+  color: var(--tone-review-text);
 }
 .todo-column-title.tone-todo {
   color: var(--primary);
@@ -1428,6 +1447,9 @@ body:has(dialog[open]) {
 }
 .todo-empty-icon.tone-progress {
   color: var(--tone-progress-text);
+}
+.todo-empty-icon.tone-review {
+  color: var(--tone-review-text);
 }
 .todo-empty-icon.tone-todo {
   color: var(--primary);
@@ -1495,6 +1517,10 @@ body:has(dialog[open]) {
 .todo-status-chip.tone-progress {
   background: var(--soft);
   color: var(--tone-progress-text);
+}
+.todo-status-chip.tone-review {
+  background: var(--status-review-bg);
+  color: var(--status-review-text);
 }
 .todo-status-chip.tone-done {
   background: var(--soft);
@@ -1708,6 +1734,9 @@ body:has(dialog[open]) {
     flex: 1;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .todo-page .todo-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .todo-stat {
     min-width: 0;
@@ -2210,6 +2239,13 @@ body { font-size: 14px; }
 }
 .badge[data-status="Dikerjakan"]::before {
   background: var(--status-work-accent);
+}
+.badge[data-status="On Review"] {
+  background: var(--status-review-bg);
+  color: var(--status-review-text);
+}
+.badge[data-status="On Review"]::before {
+  background: var(--status-review-accent);
 }
 .badge[data-status="Selesai"] {
   background: var(--status-done-bg);

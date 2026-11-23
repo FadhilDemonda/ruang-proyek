@@ -20,7 +20,14 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import Select from "./Select";
 import WorkspaceIcon from "./WorkspaceIcon";
-import { TODO_PRIORITIES, TODO_STATUSES, type Item, type TodoPriority } from "./types";
+import {
+  TODO_PRIORITIES,
+  TODO_STATUSES,
+  todoTone,
+  type Item,
+  type TodoPriority,
+  type TodoTone,
+} from "./types";
 
 type TodoStatus = (typeof TODO_STATUSES)[number];
 
@@ -63,11 +70,11 @@ type Props = {
 type ColumnConfig = {
   status: TodoStatus;
   title: string;
-  tone: "progress" | "todo" | "done";
+  tone: TodoTone;
   emptyText: string;
 };
 
-// Order matches workflow progression: To-do -> Dikerjakan -> Selesai.
+// Order matches workflow progression: Belum Mulai -> Dikerjakan -> On Review -> Selesai.
 const BOARD_COLUMNS: ColumnConfig[] = [
   {
     status: "Belum Mulai",
@@ -80,6 +87,12 @@ const BOARD_COLUMNS: ColumnConfig[] = [
     title: "Dikerjakan",
     tone: "progress",
     emptyText: "Belum ada tugas yang dikerjakan.",
+  },
+  {
+    status: "On Review",
+    title: "On Review",
+    tone: "review",
+    emptyText: "Belum ada tugas yang ditinjau.",
   },
   {
     status: "Selesai",
@@ -111,6 +124,24 @@ function StatusIcon({
       >
         <circle cx="12" cy="12" r="9" />
         <path d="M12 7v5l3 2" />
+      </svg>
+    );
+  }
+  if (tone === "review") {
+    return (
+      <svg
+        aria-hidden="true"
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
+        <circle cx="12" cy="12" r="2.5" />
       </svg>
     );
   }
@@ -344,6 +375,7 @@ export default function TodoView(props: Props) {
       all: scoped.length,
       todo: scoped.filter((t) => t.status === "Belum Mulai").length,
       progress: scoped.filter((t) => t.status === "Dikerjakan").length,
+      review: scoped.filter((t) => t.status === "On Review").length,
       done: scoped.filter((t) => t.status === "Selesai").length,
     };
   }, [props.todos, props.projectFilter]);
@@ -352,6 +384,7 @@ export default function TodoView(props: Props) {
     { label: "Semua", value: "Semua", count: counts.all },
     { label: "Belum Mulai", value: "Belum Mulai" },
     { label: "Dikerjakan", value: "Dikerjakan" },
+    { label: "On Review", value: "On Review" },
     { label: "Selesai", value: "Selesai" },
   ];
 
@@ -403,6 +436,13 @@ export default function TodoView(props: Props) {
               <dd className="tone-progress">
                 <span className="todo-stat-dot" aria-hidden="true" />
                 <span>{counts.progress}</span>
+              </dd>
+            </div>
+            <div className="todo-stat">
+              <dt>ON REVIEW</dt>
+              <dd className="tone-review">
+                <span className="todo-stat-dot" aria-hidden="true" />
+                <span>{counts.review}</span>
               </dd>
             </div>
             <div className="todo-stat">
@@ -693,12 +733,7 @@ export default function TodoView(props: Props) {
               const overdue = Boolean(
                 task.date && task.status !== "Selesai" && task.date < today,
               );
-              const tone =
-                task.status === "Dikerjakan"
-                  ? "progress"
-                  : task.status === "Selesai"
-                    ? "done"
-                    : "todo";
+              const tone = todoTone(task.status);
               const checklist = task.checklist || [];
               const checklistDone = checklist.filter((entry) => entry.done).length;
               return (
