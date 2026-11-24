@@ -1,4 +1,8 @@
-import "./style.css";
+import "./styles/base.css";
+import "./styles/todo.css";
+import "./styles/shell.css";
+import "./styles/projects-notes.css";
+import "./styles/features.css";
 import type { Metadata, Viewport } from "next";
 import PwaRegister from "./PwaRegister";
 
