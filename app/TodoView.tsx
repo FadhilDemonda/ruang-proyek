@@ -1,15 +1,19 @@
 "use client";
 
 import { useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
   closestCorners,
+  useDndContext,
   useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type KeyboardCoordinateGetter,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -214,30 +218,22 @@ function TodoTaskCard({
   task,
   projectName,
   onOpen,
-  onStatus,
   onRemove,
 }: {
   task: Item;
   projectName: string;
   onOpen: () => void;
-  onStatus: (status: string) => void;
   onRemove: () => void;
 }) {
   const {
     attributes,
     listeners,
+    setActivatorNodeRef,
     setNodeRef,
     transform,
     transition,
     isDragging,
   } = useSortable({ id: task.id });
-  const today = new Date().toLocaleDateString("en-CA");
-  const overdue = Boolean(
-    task.date && task.status !== "Selesai" && task.date < today,
-  );
-  const checklist = task.checklist || [];
-  const checklistDone = checklist.filter((entry) => entry.done).length;
-
   return (
     <article
       ref={setNodeRef}
@@ -248,6 +244,39 @@ function TodoTaskCard({
       }}
       className="todo-card card"
     >
+      <TodoTaskCardContent
+        task={task}
+        projectName={projectName}
+        handleProps={{ ...attributes, ...listeners, ref: setActivatorNodeRef }}
+        onOpen={onOpen}
+        onRemove={onRemove}
+      />
+    </article>
+  );
+}
+
+function TodoTaskCardContent({
+  task,
+  projectName,
+  handleProps,
+  onOpen,
+  onRemove,
+}: {
+  task: Item;
+  projectName: string;
+  handleProps?: React.ComponentPropsWithRef<"button">;
+  onOpen?: () => void;
+  onRemove?: () => void;
+}) {
+  const today = new Date().toLocaleDateString("en-CA");
+  const overdue = Boolean(
+    task.date && task.status !== "Selesai" && task.date < today,
+  );
+  const checklist = task.checklist || [];
+  const checklistDone = checklist.filter((entry) => entry.done).length;
+
+  return (
+    <>
       <div className="todo-card-top">
         <div className="todo-card-tags">
           <span className="todo-project-label">{projectName}</span>
@@ -264,8 +293,7 @@ function TodoTaskCard({
           type="button"
           className="todo-handle"
           aria-label={`Geser ${task.title}`}
-          {...attributes}
-          {...listeners}
+          {...handleProps}
         >
           <svg
             aria-hidden="true"
@@ -319,50 +347,81 @@ function TodoTaskCard({
           </svg>
           {task.date || "Tanpa tenggat"}
         </span>
-        <div className="todo-card-controls">
-          <Select
-            aria-label={`Pindahkan ${task.title}`}
-            value={task.status}
-            onChange={(e) => onStatus(e.target.value)}
+        <button
+          type="button"
+          className="todo-delete-btn"
+          aria-label={`Hapus ${task.title}`}
+          title="Hapus tugas"
+          onClick={onRemove}
+        >
+          <svg
+            aria-hidden="true"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            {TODO_STATUSES.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </Select>
-          <button
-            type="button"
-            className="todo-delete-btn"
-            aria-label={`Hapus ${task.title}`}
-            title="Hapus tugas"
-            onClick={onRemove}
-          >
-            <svg
-              aria-hidden="true"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.9"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 6h18" />
-              <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-            </svg>
-          </button>
-        </div>
+            <path d="M3 6h18" />
+            <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+          </svg>
+        </button>
       </div>
-    </article>
+    </>
   );
 }
+
+function TodoDragPreview({
+  tasks,
+  projectName,
+}: {
+  tasks: Item[];
+  projectName: Props["projectName"];
+}) {
+  const { active } = useDndContext();
+  const task = active && tasks.find((task) => task.id === active.id);
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <DragOverlay className="todo-drag-preview" dropAnimation={null}>
+      {task && (
+        <div className="todo-card card" inert>
+          <TodoTaskCardContent task={task} projectName={projectName(task.projectId)} />
+        </div>
+      )}
+    </DragOverlay>,
+    document.body,
+  );
+}
+
+const todoKeyboardCoordinates: KeyboardCoordinateGetter = (event, args) => {
+  const { context } = args;
+  const { active, over, droppableRects } = context;
+  const currentTarget = over ?? active;
+  const currentColumn = currentTarget?.data.current?.sortable?.containerId ?? over?.id;
+
+  if ((event.code === "ArrowLeft" || event.code === "ArrowRight") && currentColumn) {
+    // The current column's edge sits beside its own cards.
+    const otherRects = new Map(droppableRects);
+    otherRects.delete(currentColumn);
+    return sortableKeyboardCoordinates(event, {
+      ...args,
+      context: { ...context, droppableRects: otherRects },
+    });
+  }
+
+  return sortableKeyboardCoordinates(event, args);
+};
 
 export default function TodoView(props: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+      coordinateGetter: todoKeyboardCoordinates,
     }),
   );
 
@@ -671,6 +730,7 @@ export default function TodoView(props: Props) {
 
                     <div className="todo-column-body">
                       <SortableContext
+                        id={`column:${col.status}`}
                         items={tasks.map((t) => t.id)}
                         strategy={verticalListSortingStrategy}
                       >
@@ -692,9 +752,6 @@ export default function TodoView(props: Props) {
                                 task={task}
                                 projectName={props.projectName(task.projectId)}
                                 onOpen={() => props.onOpenTask(task)}
-                                onStatus={(nextStatus) =>
-                                  props.onChangeStatus(task, nextStatus)
-                                }
                                 onRemove={() => props.onRemoveTask(task)}
                               />
                             ))}
@@ -715,6 +772,7 @@ export default function TodoView(props: Props) {
                 );
               })}
             </div>
+            <TodoDragPreview tasks={props.visibleTodos} projectName={props.projectName} />
           </DndContext>
         </>
       ) : (

@@ -365,8 +365,8 @@ test("project cards are clickable anywhere with shadow separation and structured
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test("kanban orders To-do -> Dikerjakan -> On Review -> Selesai and keeps sparse column status dropdown unclipped", async ({ page }, testInfo) => {
-  await openWorkspace(page, "light");
+test("Kanban keeps columns in status order and moves cards without status dropdowns", async ({ page }, testInfo) => {
+  await openWorkspace(page, "dark");
   await page.getByRole("navigation", { name: "Menu utama" })
     .getByRole("button", { name: "To-do", exact: true }).click();
   await expect(page.getByRole("heading", { name: "To-do saya", exact: true })).toBeVisible();
@@ -378,37 +378,41 @@ test("kanban orders To-do -> Dikerjakan -> On Review -> Selesai and keeps sparse
   await expect(columns.nth(2)).toHaveAttribute("aria-label", "Kolom On Review");
   await expect(columns.nth(3)).toHaveAttribute("aria-label", "Kolom Selesai");
 
-  const card = columns.nth(0).locator(".todo-card").first();
-  await card.getByRole("combobox", { name: "Pindahkan Tugas antrean" }).click();
-  const listbox = page.getByRole("listbox");
-  await expect(listbox).toBeVisible();
+  await expect(columns.getByRole("combobox")).toHaveCount(0);
+  const handle = page.getByRole("button", { name: "Geser Tugas antrean" });
+  const progressColumn = columns.nth(1);
+  const sourceHandle = (await handle.boundingBox())!;
+  const targetCard = (await progressColumn.getByRole("article").boundingBox())!;
+  const startX = sourceHandle.x + sourceHandle.width / 2;
+  const startY = sourceHandle.y + sourceHandle.height / 2;
+  const targetX = targetCard.x + targetCard.width - sourceHandle.width;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(targetX, startY, { steps: 12 });
+  const taskTitles = page.getByText("Tugas antrean", { exact: true });
+  const pointOverTarget = { x: targetCard.x + targetCard.width / 2, y: startY };
+  await expect.poll(() => taskTitles.evaluateAll(
+    (titles, point) => titles.some((title) => {
+      const card = title.closest(".todo-card");
+      if (!card?.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return false;
+      const bounds = card.getBoundingClientRect();
+      return bounds.left <= point.x && point.x < bounds.right &&
+        bounds.top <= point.y && point.y < bounds.bottom;
+    }),
+    pointOverTarget,
+  )).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("todo-kanban-drag.png"), fullPage: true });
+  await page.mouse.up();
+  await expect(progressColumn.getByRole("button", { name: "Tugas antrean", exact: true })).toBeVisible();
+  await expect(taskTitles).toHaveCount(1);
+  await expect(page.locator(".workspace-toast")).toHaveText(/Perubahan tersimpan/);
 
-  const metrics = await listbox.evaluate((el) => {
-    const rect = el.getBoundingClientRect();
-    const optionRects = Array.from(el.querySelectorAll('[role="option"]')).map((opt) =>
-      opt.getBoundingClientRect(),
-    );
-    return {
-      rect: { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right, height: rect.height },
-      scrollHeight: el.scrollHeight,
-      clientHeight: el.clientHeight,
-      viewport: { width: window.innerWidth, height: window.innerHeight },
-      optionRects: optionRects.map((r) => ({ height: r.height, top: r.top, bottom: r.bottom })),
-    };
-  });
-
-  expect(metrics.scrollHeight).toBeLessThanOrEqual(metrics.clientHeight + 1);
-  expect(metrics.rect.bottom).toBeLessThanOrEqual(metrics.viewport.height);
-  expect(metrics.rect.right).toBeLessThanOrEqual(metrics.viewport.width);
-  expect(metrics.optionRects).toHaveLength(4);
-  for (const opt of metrics.optionRects) {
-    expect(opt.height).toBeGreaterThanOrEqual(40);
-    expect(opt.bottom).toBeLessThanOrEqual(metrics.rect.bottom + 1);
-  }
-  await page.screenshot({ path: testInfo.outputPath("todo-dropdown-unclipped.png"), fullPage: true });
-
-  await listbox.getByRole("option", { name: "On Review", exact: true }).click();
-  await expect(columns.nth(2).getByRole("button", { name: "Tugas antrean", exact: true })).toBeVisible();
+  await handle.focus();
+  await page.keyboard.press("Space");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("Space");
+  await expect(columns.nth(0).getByRole("button", { name: "Tugas antrean", exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("todo-kanban.png"), fullPage: true });
 
   // Verify Select inside modal dialog also renders unclipped and handles Escape without closing modal.
   await page.getByRole("button", { name: "+ Tambah tugas", exact: true }).first().click();
