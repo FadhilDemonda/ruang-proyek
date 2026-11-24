@@ -24,12 +24,16 @@ export type ChecklistItem = {
   done: boolean;
 };
 
+export const NOTE_COLORS = ["butter", "blush", "sky", "sage"] as const;
+export type NoteColor = (typeof NOTE_COLORS)[number];
+
 export type Note = {
   id: string;
   title: string;
   content: string;
   updatedAt: number;
   projectId?: string;
+  color?: NoteColor;
 };
 
 export type Item = {

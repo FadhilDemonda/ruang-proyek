@@ -506,6 +506,10 @@ function Workspace() {
               );
             }}
             onOpenProject={(id) => openDetail("projects", id)}
+            onAddProject={() => {
+              setConversion(null);
+              edit("projects");
+            }}
             onOpen={(id) => openDetail("notes", id)}
             onBack={closeDetail}
             onCreated={savedNoteRoute}

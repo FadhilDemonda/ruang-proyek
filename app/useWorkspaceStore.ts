@@ -128,7 +128,7 @@ export function useWorkspaceStore({
   }
 
   const saveNote = useCallback(
-    async (draft: Pick<Note, "id" | "title" | "content" | "projectId">) => {
+    async (draft: Pick<Note, "id" | "title" | "content" | "projectId" | "color">) => {
       if (!user) throw new Error("Sesi tidak tersedia.");
       const title = draft.title.trim();
       if (!title) throw new Error("Judul catatan wajib diisi.");
@@ -136,6 +136,7 @@ export function useWorkspaceStore({
         title,
         content: draft.content,
         projectId: draft.projectId || "",
+        color: draft.color || "butter",
         updatedAt: Date.now(),
       };
       try {
