@@ -15,11 +15,13 @@
   flex-direction: column;
   background: var(--bg);
   color: var(--text);
+  color-scheme: light;
   font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
   line-height: 1.5;
 }
 
-.page[data-auth-theme="dark"] {
+.page[data-auth-theme="dark"],
+:global([data-theme="dark"]) .page {
   --bg: #181d15;
   --surface: #252c20;
   --soft: #30392a;
@@ -31,6 +33,7 @@
   --input-border: #939e87;
   --error-bg: #552b25;
   --error-text: #ffd0c8;
+  color-scheme: dark;
 }
 
 .header {
@@ -165,6 +168,7 @@
   border: 1px solid var(--input-border);
   border-radius: 6px;
   color: var(--muted);
+  overflow: hidden;
 }
 .inputWrap:focus-within {
   outline: 2px solid var(--primary);
@@ -179,6 +183,18 @@
   background: transparent;
   color: var(--text);
   font-size: 14px;
+}
+.inputWrap input:-webkit-autofill,
+.inputWrap input:-webkit-autofill:hover,
+.inputWrap input:-webkit-autofill:focus,
+.inputWrap input:-webkit-autofill:active,
+.inputWrap input:autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset !important;
+  box-shadow: 0 0 0 1000px var(--surface) inset !important;
+  -webkit-text-fill-color: var(--text) !important;
+  caret-color: var(--text);
+  border-radius: 0;
+  transition: background-color 99999s ease-in-out 0s;
 }
 .inputWrap input:focus-visible {
   outline: none;

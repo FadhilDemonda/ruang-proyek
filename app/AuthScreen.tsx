@@ -353,8 +353,7 @@ export default function AuthScreen({ mode }: { mode: "login" | "register" }) {
               </div>
               {registering && (
                 <small id="password-hint" className={styles.hint}>
-                  Minimal {MIN_PASSWORD_LENGTH} karakter. Gunakan kata sandi
-                  yang tidak dipakai di akun lain.
+                  Minimal {MIN_PASSWORD_LENGTH} karakter.
                 </small>
               )}
             </div>
