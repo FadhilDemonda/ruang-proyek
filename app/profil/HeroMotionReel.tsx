@@ -7,11 +7,28 @@ const REEL_DURATION_MS = 10_000;
 const PHASE_COUNT = 4;
 const PHASE_DURATION_MS = REEL_DURATION_MS / PHASE_COUNT;
 
-const PHASE_LABELS = [
-  "01 · Request",
-  "02 · Proyek",
-  "03 · Kanban",
-  "04 · Sinkron",
+const NAV_MODULES = [
+  {
+    id: "request",
+    label: "Request",
+    iconPath: "M3 14l3-9h12l3 9v5H3zM3 14h5l2 3h4l2-3h5",
+  },
+  {
+    id: "proyek",
+    label: "Proyek",
+    iconPath:
+      "M3 7V5a1 1 0 0 1 1-1h5l3 3h8a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7ZM3 9h18",
+  },
+  {
+    id: "todo",
+    label: "To-do",
+    iconPath: "M4 4h16v16H4zM9 4v16m5-16v16",
+  },
+  {
+    id: "notes",
+    label: "Notes",
+    iconPath: "M6 3h9l3 3v15H6zM15 3v4h4M9 11h6M9 15h6",
+  },
 ] as const;
 
 export default function HeroMotionReel() {
@@ -57,7 +74,6 @@ export default function HeroMotionReel() {
     let bgClockSec = 0;
     let activePhase = 0;
 
-    // Smooth pointer parallax state
     let targetRx = 0;
     let targetRy = 0;
     let targetGx = 50;
@@ -103,7 +119,6 @@ export default function HeroMotionReel() {
 
       ctx.clearRect(0, 0, width, height);
 
-      // Ambient gradient base
       const baseGrad = ctx.createRadialGradient(
         width * 0.25,
         height * 0.18,
@@ -124,7 +139,6 @@ export default function HeroMotionReel() {
       ctx.fillStyle = baseGrad;
       ctx.fillRect(0, 0, width, height);
 
-      // Orbiting volumetric light blooms
       const blobs = [
         {
           cx: width * (0.3 + 0.16 * Math.sin(t * 0.55)),
@@ -156,7 +170,6 @@ export default function HeroMotionReel() {
         ctx.fill();
       }
 
-      // Flowing translucent energy ribbons
       ctx.save();
       ctx.lineWidth = 1.25;
       for (let i = 0; i < 3; i += 1) {
@@ -177,7 +190,6 @@ export default function HeroMotionReel() {
         ctx.stroke();
       }
 
-      // Subtle orbital arc accent
       ctx.strokeStyle = dark ? "rgba(197, 216, 157, 0.09)" : "rgba(91, 106, 67, 0.09)";
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -205,7 +217,8 @@ export default function HeroMotionReel() {
       rafId = 0;
       if (disposed || !visible || document.hidden) return;
 
-      const dtMs = lastTimestamp > 0 ? Math.min(50, now - lastTimestamp) : 16.67;
+      const dtMs =
+        lastTimestamp > 0 ? Math.max(0, Math.min(50, now - lastTimestamp)) : 16.67;
       lastTimestamp = now;
       const dtSec = dtMs / 1000;
 
@@ -333,7 +346,9 @@ export default function HeroMotionReel() {
     drawLightField(bgClockSec);
     wake();
 
-    return () => {
+    const activeModule = NAV_MODULES[phase] ?? NAV_MODULES[0];
+
+  return () => {
       disposed = true;
       wakeRef.current = null;
       pointerHandlersRef.current = null;
@@ -356,6 +371,8 @@ export default function HeroMotionReel() {
     pointerHandlersRef.current?.leave();
   }
 
+  const activeModule = NAV_MODULES[phase] ?? NAV_MODULES[0];
+
   return (
     <div
       ref={stageRef}
@@ -373,7 +390,7 @@ export default function HeroMotionReel() {
         ref={deckRef}
         className="rp-reel-deck"
         role="img"
-        aria-label="Pratinjau animasi alur Ruang Proyek dari permintaan, struktur proyek, papan Kanban, hingga sinkronisasi"
+        aria-label="Pratinjau animasi antarmuka Ruang Proyek meliputi Request, Proyek, To-do Kanban, dan Notes"
       >
         <div className="rp-reel-chip rp-reel-chip-top" aria-hidden="true">
           <span className="rp-reel-dot" />
@@ -383,111 +400,163 @@ export default function HeroMotionReel() {
         <div className="rp-reel-frame" aria-hidden="true">
           <div className="rp-reel-sheen" />
 
-          <div className="rp-reel-topbar">
-            <span className="rp-reel-path">
-              <span className="rp-reel-dot" />
-              ruang-proyek / reel
-            </span>
-            <span className="rp-reel-phase-pill">{PHASE_LABELS[phase]}</span>
-          </div>
-
-          <div className="rp-reel-viewport">
-            {/* Phase 0: Request Capture */}
-            <div className="rp-reel-scene rp-reel-scene-0">
-              <div className="rp-reel-scanline" />
-              <div className="rp-glass-card rp-reel-req-card">
-                <div className="rp-glass-meta">
-                  <span className="rp-glass-tag">REQUEST MASUK</span>
-                  <span className="rp-glass-time">Baru saja</span>
-                </div>
-                <strong className="rp-glass-title">Pembaruan halaman profil</strong>
-                <div className="rp-glass-pills">
-                  <span className="rp-pill-accent">Prioritas Tinggi</span>
-                  <span className="rp-pill-soft">Tenggat · Jum</span>
-                </div>
+          <div className="rp-ws-shell">
+            <div className="rp-ws-sidebar">
+              <div className="rp-ws-brand">
+                <Logo />
+                <span>Ruang Proyek</span>
               </div>
-              <div className="rp-reel-beam-row">
-                <span className="rp-beam-node">Peminta: Tim Desain</span>
-                <span className="rp-beam-line" />
-                <span className="rp-beam-status">Siap dikonversi</span>
-              </div>
-            </div>
-
-            {/* Phase 1: Project & Notes Structure */}
-            <div className="rp-reel-scene rp-reel-scene-1">
-              <div className="rp-glass-card rp-reel-proj-card">
-                <div className="rp-proj-row">
-                  <div>
-                    <span className="rp-glass-tag">PROYEK TERSTRUKTUR</span>
-                    <strong className="rp-glass-title">Portal Ruang Kerja Q4</strong>
-                  </div>
-                  <div className="rp-ring-wrap">
-                    <svg viewBox="0 0 44 44" className="rp-ring-svg">
-                      <circle cx="22" cy="22" r="17" className="rp-ring-track" />
-                      <circle cx="22" cy="22" r="17" className="rp-ring-fill" />
+              <span className="rp-ws-section-label">RUANG KERJA</span>
+              <div className="rp-ws-nav">
+                <span className="rp-ws-nav-pill" />
+                {NAV_MODULES.map((item, idx) => (
+                  <div key={item.id} className="rp-ws-nav-item" data-idx={idx}>
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.9"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d={item.iconPath} />
                     </svg>
-                    <span>78%</span>
+                    <span>{item.label}</span>
                   </div>
-                </div>
-                <div className="rp-note-preview">
-                  <span className="rp-note-label">CATATAN KERJA</span>
-                  <div className="rp-note-bars">
-                    <i className="is-done" />
-                    <i className="is-done" />
-                    <i />
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
-            {/* Phase 2: Kanban Flow */}
-            <div className="rp-reel-scene rp-reel-scene-2">
-              <div className="rp-mini-kanban">
-                <div className="rp-mini-col">
-                  <span>Belum</span>
-                  <div className="rp-mini-slot" />
-                  <div className="rp-mini-slot is-dim" />
-                </div>
-                <div className="rp-mini-col">
-                  <span>Jalan</span>
-                  <div className="rp-mini-slot" />
-                  <div className="rp-mini-slot is-dim" />
-                </div>
-                <div className="rp-mini-col">
-                  <span>Selesai</span>
-                  <div className="rp-mini-slot is-target" />
-                  <div className="rp-mini-slot is-dim" />
-                </div>
-                <div className="rp-kanban-runner">
-                  <span className="rp-runner-dot" />
-                  <strong>Finalisasi UI</strong>
-                </div>
-              </div>
-            </div>
-
-            {/* Phase 3: Synced Overview */}
-            <div className="rp-reel-scene rp-reel-scene-3">
-              <div className="rp-sync-grid">
-                <div className="rp-sync-tile">
-                  <span>Proyek</span>
-                  <strong>6 aktif</strong>
-                </div>
-                <div className="rp-sync-tile">
-                  <span>To-do</span>
-                  <strong>14 tugas</strong>
-                </div>
-                <div className="rp-sync-tile">
-                  <span>Request</span>
-                  <strong>3 masuk</strong>
-                </div>
-                <div className="rp-sync-tile">
-                  <span>Notes</span>
-                  <strong>Tersimpan</strong>
-                </div>
-              </div>
-              <div className="rp-sync-banner">
+            <div className="rp-ws-main">
+              <div className="rp-ws-crumb">
+                <span>
+                  Ruang kerja / <strong>{activeModule.label}</strong>
+                </span>
                 <span className="rp-reel-dot" />
-                <span>Tersinkron otomatis ke akun pribadi</span>
+              </div>
+
+              <div className="rp-reel-viewport">
+                {/* Phase 0: Daftar request (request.png parity) */}
+                <div className="rp-reel-scene rp-reel-scene-0">
+                  <div className="rp-ws-head">
+                    <strong>Daftar request</strong>
+                    <span className="rp-ws-add-pill">+ Tambah</span>
+                  </div>
+                  <div className="rp-ws-card">
+                    <div className="rp-ws-card-top">
+                      <span className="rp-ws-pill-new">
+                        <i /> Baru
+                      </span>
+                      <span className="rp-ws-date">2026-11-26</span>
+                    </div>
+                    <strong className="rp-ws-card-title">
+                      Rekap performa kanal bulanan
+                    </strong>
+                    <span className="rp-ws-card-sub">
+                      Rina Pratiwi · Tim Bisnis
+                    </span>
+                    <div className="rp-ws-card-actions">
+                      <span className="rp-ws-btn rp-ws-btn-convert">
+                        Jadikan proyek
+                      </span>
+                      <span className="rp-ws-btn">Jadikan to-do</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phase 1: Proyek saya (proyek.png parity) */}
+                <div className="rp-reel-scene rp-reel-scene-1">
+                  <div className="rp-ws-head">
+                    <strong>Proyek saya</strong>
+                    <span className="rp-ws-stats">Dikerjakan 1 · Selesai 1</span>
+                  </div>
+                  <div className="rp-ws-card">
+                    <div className="rp-ws-card-top">
+                      <div className="rp-ws-badges">
+                        <span className="rp-ws-pill-wip">
+                          <i /> Dikerjakan
+                        </span>
+                        <span className="rp-ws-pill-chip">Folder lokal</span>
+                        <span className="rp-ws-pill-chip">2 Link</span>
+                      </div>
+                    </div>
+                    <strong className="rp-ws-card-title">
+                      Dashboard Analisis Retensi Q2
+                    </strong>
+                    <div className="rp-ws-prog-row">
+                      <div className="rp-ws-prog-track">
+                        <span className="rp-ws-prog-fill" />
+                      </div>
+                      <span className="rp-ws-prog-label">2/3 selesai</span>
+                      <span className="rp-ws-btn">Kanban</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phase 2: To-do saya Kanban (tugas.png parity) */}
+                <div className="rp-reel-scene rp-reel-scene-2">
+                  <div className="rp-ws-head">
+                    <strong>To-do saya</strong>
+                    <span className="rp-ws-filter-pill">Semua 6</span>
+                  </div>
+                  <div className="rp-ws-kanban">
+                    <div className="rp-ws-kcol">
+                      <span className="rp-ws-ktitle">Belum</span>
+                      <div className="rp-ws-kslot" />
+                      <div className="rp-ws-kslot is-dim" />
+                    </div>
+                    <div className="rp-ws-kcol">
+                      <span className="rp-ws-ktitle is-wip">
+                        <i /> Dikerjakan
+                      </span>
+                      <div className="rp-ws-kslot" />
+                      <div className="rp-ws-kslot is-dim" />
+                    </div>
+                    <div className="rp-ws-kcol">
+                      <span className="rp-ws-ktitle is-done">
+                        <i /> Selesai
+                      </span>
+                      <div className="rp-ws-kslot is-target" />
+                      <div className="rp-ws-kslot is-dim" />
+                    </div>
+                    <div className="rp-ws-krunner">
+                      <span className="rp-ws-krunner-proj">Retensi Q2</span>
+                      <strong>Validasi data</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phase 3: Notes (notes.png parity) */}
+                <div className="rp-reel-scene rp-reel-scene-3">
+                  <div className="rp-ws-head">
+                    <strong>Notes</strong>
+                    <span className="rp-ws-pill-chip">Total catatan 3</span>
+                  </div>
+                  <div className="rp-ws-notes-grid">
+                    <div className="rp-ws-note-card is-highlight">
+                      <span className="rp-ws-pill-new">
+                        <i /> Baru diedit
+                      </span>
+                      <strong>Notulen Rapat Mingguan</strong>
+                      <div className="rp-ws-note-lines">
+                        <i />
+                        <i className="short" />
+                      </div>
+                      <span className="rp-ws-note-foot">26 kata</span>
+                    </div>
+                    <div className="rp-ws-note-card">
+                      <span className="rp-ws-pill-chip">Catatan</span>
+                      <strong>Palet &amp; Tipografi Ruang</strong>
+                      <div className="rp-ws-note-lines">
+                        <i />
+                        <i className="short" />
+                      </div>
+                      <span className="rp-ws-note-foot">24 kata</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
