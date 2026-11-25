@@ -1,7 +1,9 @@
 import Link from "next/link";
 import Logo from "./Logo";
+import HeroMotionReel from "./profil/HeroMotionReel";
 import Preview from "./profil/Preview";
 import ThemeToggle from "./ThemeToggle";
+import WorkflowMotionCards, { type WorkflowMotionStep } from "./profil/WorkflowMotionCards";
 import "./profil/profil.css";
 
 export const metadata = {
@@ -10,21 +12,27 @@ export const metadata = {
     "Ruang kerja pribadi untuk menyusun proyek, memantau tugas Kanban, mencatat permintaan, dan menyimpan catatan.",
 };
 
-const workflowSteps = [
+const workflowSteps: WorkflowMotionStep[] = [
   {
     step: "01",
     title: "Tangkap permintaan",
     body: "Catat setiap request yang masuk lengkap dengan peminta dan tenggatnya agar tidak ada pekerjaan yang tercecer di chat.",
+    scene: "intake",
+    ariaLabel: "Animasi alur kartu permintaan masuk melewati pemindai prioritas dan tenggat.",
   },
   {
     step: "02",
     title: "Ubah jadi proyek & catatan",
     body: "Konversi permintaan menjadi proyek terstruktur, simpan tautan penting, dan tulis catatan kerja di tempat yang sama.",
+    scene: "blueprint",
+    ariaLabel: "Animasi aliran struktur proyek yang terhubung ke tautan penting dan catatan kerja.",
   },
   {
     step: "03",
     title: "Eksekusi lewat Kanban",
     body: "Pecah proyek menjadi daftar to-do dan geser progresnya dari Belum Mulai ke Dikerjakan sampai Selesai.",
+    scene: "kanban",
+    ariaLabel: "Animasi kartu tugas bergerak melintasi tiga kolom Kanban hingga selesai.",
   },
 ];
 
@@ -106,31 +114,7 @@ export default function HomePage() {
             </ul>
           </div>
 
-          <div className="rp-still" aria-hidden="true">
-            <div className="rp-folder">
-              <div className="rp-back" />
-              <div className="rp-sheet rp-sheet-back" />
-              <div className="rp-sheet rp-sheet-front">
-                <small>CATATAN PROYEK</small>
-                <i />
-                <i />
-                <i />
-              </div>
-              <div className="rp-cover">
-                <div className="rp-label">
-                  <Logo />
-                  <strong>
-                    Ruang
-                    <br />
-                    Proyek.
-                  </strong>
-                </div>
-                <div className="rp-print">
-                  ARSIP PROYEK <span>RP / 01</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <HeroMotionReel />
         </section>
 
         <section id="fitur" className="rp-features">
@@ -146,17 +130,7 @@ export default function HomePage() {
               Dari masuk sampai tuntas<span>.</span>
             </h2>
           </div>
-          <ol className="rp-steps">
-            {workflowSteps.map((item) => (
-              <li key={item.step} className="rp-step-card">
-                <span className="rp-step-num" aria-hidden="true">
-                  {item.step}
-                </span>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
-              </li>
-            ))}
-          </ol>
+          <WorkflowMotionCards steps={workflowSteps} />
         </section>
 
         <section id="tentang" className="rp-about-band">
