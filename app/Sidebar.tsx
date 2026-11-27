@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import Link from "next/link";
 import WorkspaceIcon from "./WorkspaceIcon";
 import Logo from "./Logo";
 import { containDialogFocus } from "./Modal";
+import type { Item } from "./types";
 import type { WorkspaceSection } from "./workspaceRoute";
 
-const MAX_SIDEBAR_PROJECTS = 3;
+const MAX_SIDEBAR_PROJECTS = 5;
 
 type Props = {
-  projects: { id: string; title: string }[];
+  projects: Pick<Item, "id" | "title" | "updatedAt">[];
   loading: boolean;
   section: WorkspaceSection;
   projectId: string;
@@ -52,7 +53,7 @@ type PillState = {
 };
 
 type NavSectionProps = {
-  projects: { id: string; title: string }[];
+  projects: Props["projects"];
   loading: boolean;
   section: WorkspaceSection;
   projectId: string;
@@ -97,18 +98,13 @@ function SidebarNavSection({
         ? detailId || ""
         : "";
 
-  const visibleProjects = (() => {
-    if (projects.length <= MAX_SIDEBAR_PROJECTS) return projects;
-    const head = projects.slice(0, MAX_SIDEBAR_PROJECTS);
-    if (!activeProjectId || head.some((p) => p.id === activeProjectId)) {
-      return head;
-    }
-    const activeProject = projects.find((p) => p.id === activeProjectId);
-    return activeProject
-      ? [...projects.slice(0, MAX_SIDEBAR_PROJECTS - 1), activeProject]
-      : head;
-  })();
-
+  const visibleProjects = useMemo(
+    () => [...projects]
+      .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+      .slice(0, MAX_SIDEBAR_PROJECTS),
+    [projects],
+  );
+  const hasActiveShortcut = !loading && visibleProjects.some((project) => project.id === activeProjectId);
   const hasMoreProjects = projects.length > MAX_SIDEBAR_PROJECTS;
 
   useLayoutEffect(() => {
@@ -153,7 +149,7 @@ function SidebarNavSection({
     resizeObserver.observe(wrap);
 
     return () => resizeObserver.disconnect();
-  }, [section, projectId, detailId, compact, openSignal, visibleProjects.length]);
+  }, [section, projectId, detailId, compact, openSignal, visibleProjects, hasActiveShortcut]);
 
   return (
     <div
@@ -174,10 +170,7 @@ function SidebarNavSection({
       <span className="eyebrow sidebar-label">Ruang kerja</span>
       <nav aria-label="Menu utama">
         {destinations.map(({ section: destSection, label }) => {
-          const active =
-            section === destSection &&
-            !projectId &&
-            !(destSection === "projects" && detailId);
+          const active = section === destSection && !hasActiveShortcut;
           return (
             <button
               type="button"

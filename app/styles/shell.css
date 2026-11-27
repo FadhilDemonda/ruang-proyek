@@ -147,15 +147,8 @@ aside, .mobile-sidebar {
 }
 .sidebar-navigation {
   position: relative;
-  overflow-y: auto;
-  scrollbar-gutter: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
   padding: 2px;
   margin: -2px;
-}
-.sidebar-navigation::-webkit-scrollbar {
-  display: none;
 }
 .sidebar-active-pill {
   position: absolute;

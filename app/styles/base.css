@@ -855,9 +855,17 @@ header {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  scrollbar-gutter: stable;
   padding: 4px;
   margin: -4px;
+}
+.sidebar-navigation,
+.mobile-sidebar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sidebar-navigation::-webkit-scrollbar,
+.mobile-sidebar::-webkit-scrollbar {
+  display: none;
 }
 .sidebar-navigation nav {
   display: grid;

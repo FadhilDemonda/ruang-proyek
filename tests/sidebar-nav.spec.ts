@@ -14,6 +14,7 @@ test.describe("Workspace sidebar compact navigation & sliding pill", () => {
             { id: "p3", title: "RESPON TIME HDUL", status: "Direncanakan" },
             { id: "p4", title: "PROYEK EMPAT", status: "Direncanakan" },
             { id: "p5", title: "PROYEK LIMA", status: "Selesai" },
+            { id: "p6", title: "PROYEK ENAM", status: "Direncanakan" },
           ],
           todos: [],
           requests: [],
@@ -29,11 +30,10 @@ test.describe("Workspace sidebar compact navigation & sliding pill", () => {
     const navWrap = aside.locator(".sidebar-navigation");
     await expect(navWrap).toHaveAttribute("data-pill-ready", "true");
 
-    // 1. Shortcuts capped at 3 + "Lihat semua (5)" shown
-    await expect(aside.locator(".project-nav-item")).toHaveCount(3);
+    await expect(aside.locator(".project-nav-item")).toHaveCount(5);
     const seeAll = aside.getByRole("button", { name: "Lihat semua proyek" });
     await expect(seeAll).toBeVisible();
-    await expect(seeAll).toContainText("Lihat semua (5)");
+    await expect(seeAll).toContainText("Lihat semua (6)");
 
     // 2. Compact + button (<= 30px)
     const addBox = await aside.locator(".project-add").boundingBox();
@@ -61,7 +61,7 @@ test.describe("Workspace sidebar compact navigation & sliding pill", () => {
     expect(pillBoxNotes).not.toBeNull();
     expect(Math.abs(pillBoxNotes!.y - notesBox!.y)).toBeLessThanOrEqual(2);
 
-    // 5. Clicking a project shortcut moves pill there, then "Lihat semua (5)" goes back to Proyek
+    // 5. Clicking a project shortcut moves pill there, then "Lihat semua" goes back to Proyek
     const firstProject = aside.locator(".project-nav-item").first();
     await firstProject.click();
     await expect(firstProject).toHaveClass(/active/);

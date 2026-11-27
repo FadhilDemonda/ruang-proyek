@@ -99,6 +99,41 @@ for (const theme of ["light", "dark"] as const) {
   });
 }
 
+test("sidebar shows five recently updated projects and scrolls without a scrollbar", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 420 });
+  await page.addInitScript(() => {
+    const projects = [3, 6, 2, 5, 1, 4].map((number) => ({
+      id: `p${number}`,
+      title: `Proyek ${number}`,
+      status: "Direncanakan",
+      updatedAt: number === 1 ? undefined : number * 1000,
+    }));
+    localStorage.setItem("ruang-proyek-local-v1", JSON.stringify({ projects, todos: [], requests: [], notes: [] }));
+  });
+  await page.goto("/workspace?section=projects&detail=p1");
+
+  const sidebar = page.getByRole("complementary", { name: "Navigasi ruang kerja" });
+  const shortcuts = sidebar.getByRole("navigation", { name: "Proyek saya" });
+  await expect(shortcuts.getByRole("button")).toHaveText([
+    "Proyek 6", "Proyek 5", "Proyek 4", "Proyek 3", "Proyek 2",
+  ]);
+  await expect(sidebar.getByRole("button", { name: "Proyek", exact: true })).toHaveAttribute("aria-current", "page");
+
+  const navigation = sidebar.locator(".sidebar-navigation");
+  await expect(navigation).toHaveCSS("scrollbar-width", "none");
+  await navigation.hover();
+  await page.mouse.wheel(0, 400);
+  await expect.poll(() => navigation.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await sidebar.getByRole("button", { name: "Lihat semua proyek" }).click();
+  await expect(page.getByRole("heading", { name: "Proyek saya" })).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 480 });
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  const drawer = page.getByRole("dialog", { name: "Menu ruang kerja" });
+  await expect(drawer.locator(".sidebar-navigation")).toHaveCSS("scrollbar-width", "none");
+  await expect(drawer.getByRole("navigation", { name: "Proyek saya" }).getByRole("button")).toHaveCount(5);
+});
+
 test.describe("mobile Kanban", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
