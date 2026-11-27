@@ -28,7 +28,7 @@ const views: ViewItem[] = [
     file: "tugas",
     summary:
       "Pindahkan tugas antar kolom Kanban saat pekerjaan beralih dari Belum Mulai ke Dikerjakan hingga Selesai.",
-    alt: "Tampilan papan Kanban To-do Ruang Proyek dengan kolom Belum Mulai, Dikerjakan, dan Selesai.",
+    alt: "Tampilan papan Kanban To-do Ruang Proyek dengan tugas yang dikelompokkan berdasarkan status.",
   },
   {
     id: "request",
@@ -138,11 +138,20 @@ export default function Preview() {
                   </div>
                   <div className="rp-screen-frame">
                     <img
+                      className="rp-screen-light"
                       src={`/profil/${view.file}.png`}
                       alt={view.alt}
                       width={1280}
                       height={800}
-                      loading={index === 0 ? "eager" : "lazy"}
+                      loading="lazy"
+                    />
+                    <img
+                      className="rp-screen-dark"
+                      src={`/profil/${view.file}-dark.png`}
+                      alt={view.alt}
+                      width={1280}
+                      height={800}
+                      loading="lazy"
                     />
                   </div>
                 </div>

@@ -60,6 +60,33 @@ test.describe("Landing page futuristic motion reel", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("matches workspace screenshots to the landing page theme", async ({ page }) => {
+    await page.goto("/");
+    const themeButton = page.locator(".rp-theme-btn");
+    const previews = [
+      ["Proyek", "proyek"],
+      ["To-do", "tugas"],
+      ["Request", "request"],
+      ["Notes", "notes"],
+    ];
+
+    await themeButton.click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    for (const [name, file] of previews) {
+      await page.getByRole("tab", { name, exact: true }).click();
+      const image = page.getByRole("tabpanel", { name, exact: true }).getByRole("img");
+      await expect(image).toHaveAttribute("src", `/profil/${file}-dark.png`);
+      await image.scrollIntoViewIfNeeded();
+      await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1280);
+    }
+
+    await page.reload();
+    const projectsImage = page.getByRole("tabpanel", { name: "Proyek" }).getByRole("img");
+    await expect(projectsImage).toHaveAttribute("src", "/profil/proyek-dark.png");
+    await themeButton.click();
+    await expect(projectsImage).toHaveAttribute("src", "/profil/proyek.png");
+  });
+
   test("renders cleanly on mobile viewport without horizontal overflow", async ({ page }) => {
     const pageErrors: Error[] = [];
     page.on("pageerror", (err) => pageErrors.push(err));
